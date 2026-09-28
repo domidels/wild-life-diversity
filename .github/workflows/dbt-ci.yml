@@ -1,0 +1,27 @@
+# Checks that the dbt project parses (no Databricks connection needed).
+name: dbt parse
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    paths: ["dbt/**"]
+
+jobs:
+  parse:
+    runs-on: ubuntu-latest
+    env:
+      DATABRICKS_HOST: ci.cloud.databricks.com
+      DATABRICKS_HTTP_PATH: /sql/1.0/warehouses/ci
+      DATABRICKS_TOKEN: ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install "dbt-databricks>=1.10"
+      - working-directory: dbt
+        run: |
+          cp profiles.example.yml profiles.yml
+          dbt deps --profiles-dir .
+          dbt parse --profiles-dir .

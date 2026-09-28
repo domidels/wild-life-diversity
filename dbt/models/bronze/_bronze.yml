@@ -1,0 +1,7 @@
+version: 2
+
+models:
+  - name: bronze_gbif_occurrences
+    description: GBIF occurrence CSVs read from the landing volume, untouched (strings only).
+  - name: bronze_firms_detections
+    description: NASA FIRMS detection CSVs read from the landing volume, untouched (strings only).

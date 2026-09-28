@@ -6,7 +6,7 @@ An end-to-end **Databricks + dbt** data platform combining global satellite wild
 **Question:** after a major wildfire, does what naturalists observe in the burned area change —
 beyond what changed everywhere else?
 
-**[Live dashboard →](https://<your-github-username>.github.io/wild-life-diversity/)**
+**[Live dashboard →](https://domidels.github.io/wild-life-diversity/)**
 
 ![Dashboard screenshot](docs/screenshot.png)
 
@@ -83,7 +83,7 @@ populations. Observer behaviour itself reacts to fire (closures, then curiosity 
 
 ## Data quality
 
-37 dbt tests: uniqueness and nullability of keys, accepted values, referential integrity, and
+dbt tests on every layer: uniqueness and nullability of keys, accepted values, referential integrity, and
 two business rules (rarefied richness never exceeds observed richness; taxon shares sum to 100%).
 
 ## Run it
@@ -118,4 +118,3 @@ D3.js · Leaflet · h3-js · GitHub Actions / Pages
 - GBIF.org — occurrence data via the GBIF API. For publication, cite the datasets used; for large
   extractions prefer the GBIF Download API, which issues a citable DOI.
 - NASA FIRMS — VIIRS S-NPP 375 m active fire product (standard processing), NASA LANCE/FIRMS.
-# wild-life-diversity

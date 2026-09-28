@@ -1,0 +1,51 @@
+version: 2
+
+models:
+  - name: stg_regions
+    description: Study regions (bounding boxes).
+    columns:
+      - name: region_id
+        data_tests: [unique, not_null]
+
+  - name: stg_episodes
+    description: Fire episodes with their before / during / after windows and recency rank within the region.
+    columns:
+      - name: episode_id
+        data_tests: [unique, not_null]
+
+  - name: stg_gbif__occurrences
+    description: >
+      Usable GBIF occurrences: identified to species, field observations only (no museum specimens),
+      coordinate uncertainty under `max_coord_uncertainty_m`, deduplicated, indexed on the H3 grid.
+    columns:
+      - name: gbif_id
+        data_tests: [unique, not_null]
+      - name: region_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('stg_regions'), field: region_id}
+      - name: species_key
+        data_tests: [not_null]
+      - name: taxon_group
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [Birds, Mammals, Reptiles, Amphibians, Insects, Plants, Fungi, Other]
+      - name: h3_cell
+        data_tests: [not_null]
+
+  - name: stg_firms__detections
+    description: Satellite fire detections (VIIRS / MODIS) with a confidence level comparable across instruments.
+    columns:
+      - name: region_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('stg_regions'), field: region_id}
+      - name: confidence_level
+        data_tests:
+          - accepted_values:
+              arguments: {values: [low, nominal, high]}
+      - name: h3_cell
+        data_tests: [not_null]

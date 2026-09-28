@@ -1,0 +1,32 @@
+version: 2
+
+seeds:
+  - name: regions
+    description: >
+      Study regions: a bounding box each. Ingestion downloads everything inside it.
+      Single source of truth for both the ingestion scripts and dbt.
+    columns:
+      - name: region_id
+        data_tests: [unique, not_null]
+      - name: is_active
+        description: Downloaded by the scheduled pipeline. Switch a region on here to start studying it.
+
+  - name: fire_episodes
+    description: >
+      Fires studied in each region. A region can have several episodes (e.g. Gironde 2022 and 2026):
+      they share the map, and each gets its own before/after analysis. Add a row to study a new fire.
+    columns:
+      - name: episode_id
+        data_tests: [unique, not_null]
+      - name: region_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments: {to: ref('regions'), field: region_id}
+      - name: fire_start
+        data_tests: [not_null]
+      - name: fire_end
+        data_tests: [not_null]
+      - name: before_months
+        description: Length of the "before" window. Longer gives more baseline data but older, sparser records.
+        data_tests: [not_null]

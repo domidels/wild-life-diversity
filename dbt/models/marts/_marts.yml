@@ -1,0 +1,66 @@
+version: 2
+
+models:
+  - name: dim_episodes
+    description: One row per fire episode with its region and headline numbers (burned area, detections, observations, species).
+    columns:
+      - name: episode_id
+        data_tests: [unique, not_null]
+      - name: recency_rank
+        description: 1 for the most recent fire of the region — drives the red ramp of the map.
+
+  - name: fct_fire_activity_monthly
+    description: Monthly fire detections (nominal + high confidence) per region, over all its episodes.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [region_id, month]}
+
+  - name: fct_observations_monthly
+    description: Monthly observations and species, burned vs control.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [episode_id, month, zone]}
+
+  - name: fct_baci_summary
+    description: The four BACI boxes (burned/control x before/after) with raw and rarefied richness.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [episode_id, zone, period]}
+    columns:
+      - name: rarefied_richness
+        description: Expected species in a random sample of n_rarefaction observations — comparable across boxes.
+
+  - name: fct_baci_effect
+    description: >
+      BACI effect per region and metric: (burned after / before) / (control after / before).
+      1 = same trajectory as the control; below 1 = the burned area lost ground.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [episode_id, metric]}
+
+  - name: fct_species_response
+    description: Per species, change in relative frequency after the fire, burned vs control, and a response label.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [episode_id, species_key]}
+    columns:
+      - name: response
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [new_in_region, not_seen_after, insufficient_data, more_frequent, less_frequent, stable]
+
+  - name: fct_species_latitude_shift
+    description: Mean latitude of each species' observations before vs after, with a standard error.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [episode_id, species_key]}
+
+  - name: fct_taxon_group_mix
+    description: Share of observations per taxonomic group, per zone and period.
+
+  - name: fct_map_cells
+    description: One row per (episode, H3 cell) with zone, burn history across episodes, and fire and observation counts, for the map.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [episode_id, h3_index]}

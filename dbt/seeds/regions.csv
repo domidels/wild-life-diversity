@@ -1,0 +1,6 @@
+region_id,region_name,country_code,min_lon,min_lat,max_lon,max_lat,is_active
+kangaroo_island,Kangaroo Island,AU,136.50,-36.10,138.20,-35.55,false
+north_evia,North Evia,GR,22.80,38.55,23.75,39.10,true
+pantanal,Pantanal (Mato Grosso),BR,-58.20,-17.80,-55.80,-16.20,false
+dixie_california,Northern Sierra Nevada,US,-121.70,39.70,-120.30,40.70,false
+landes_gironde,Landes de Gascogne (Gironde),FR,-1.30,44.30,-0.30,45.20,true

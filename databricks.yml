@@ -1,0 +1,97 @@
+# Databricks Asset Bundle: the whole pipeline as a scheduled Databricks job.
+#
+#   ingest (GBIF + NASA FIRMS -> Unity Catalog volume)  ->  dbt build (SQL warehouse)
+#
+# Deployed by .github/workflows/deploy-databricks.yml on every push to main, or by hand:
+#   databricks bundle deploy -t prod
+#   databricks bundle run wildfire_pipeline -t prod
+bundle:
+  name: wildfire-biodiversity
+
+variables:
+  warehouse_id:
+    description: SQL warehouse that runs dbt
+    lookup:
+      warehouse: Serverless Starter Warehouse
+  landing_path:
+    description: Unity Catalog volume where raw CSVs land
+    default: /Volumes/workspace/wildfire_raw/landing
+
+sync:
+  # Anchored paths ("/dbt") — a bare "dbt/**" would also match .venv/.../site-packages/dbt.
+  include:
+    - /ingestion/**
+    - /dbt/**
+    - /databricks/**
+  exclude:
+    - /.venv/**
+    - /data/**
+    - /web/**
+    - /dbt/target/**
+    - /dbt/dbt_packages/**
+    - /dbt/logs/**
+
+targets:
+  prod:
+    mode: production
+    default: true
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}
+
+resources:
+  jobs:
+    wildfire_pipeline:
+      name: wildfire-biodiversity-pipeline
+      description: Monthly refresh — GBIF and NASA FIRMS into the landing volume, then dbt build.
+      schedule:
+        quartz_cron_expression: "0 0 3 1 * ?"   # 03:00 UTC on the 1st of every month
+        timezone_id: UTC
+        pause_status: UNPAUSED
+      max_concurrent_runs: 1
+
+      environments:
+        - environment_key: ingest
+          spec:
+            client: "2"
+            dependencies:
+              - requests>=2.31
+              - python-dotenv>=1.0
+        - environment_key: dbt
+          spec:
+            client: "2"
+            dependencies:
+              - dbt-databricks>=1.10,<2
+
+      tasks:
+        - task_key: setup_volume
+          environment_key: ingest
+          spark_python_task:
+            python_file: ingestion/setup_volume.py
+
+        - task_key: ingest_firms
+          depends_on: [{task_key: setup_volume}]
+          environment_key: ingest
+          spark_python_task:
+            python_file: ingestion/firms.py
+            parameters: ["--out", "${var.landing_path}", "--refresh-months", "3"]
+
+        - task_key: ingest_gbif
+          depends_on: [{task_key: setup_volume}]
+          environment_key: ingest
+          timeout_seconds: 14400
+          spark_python_task:
+            python_file: ingestion/gbif.py
+            parameters: ["--out", "${var.landing_path}", "--refresh-months", "3"]
+
+        - task_key: dbt_build
+          depends_on: [{task_key: ingest_firms}, {task_key: ingest_gbif}]
+          environment_key: dbt
+          dbt_task:
+            project_directory: dbt
+            warehouse_id: ${var.warehouse_id}
+            catalog: workspace
+            schema: wildfire
+            commands:
+              - dbt deps
+              - dbt seed
+              - dbt build

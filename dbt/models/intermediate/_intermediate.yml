@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: int_cell_fire_history
+    description: Per episode and H3 cell, detections during the studied fire vs. at any other time of the study window.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [episode_id, h3_cell]}
+
+  - name: int_cell_zones
+    description: >
+      Cells that are not plain controls: burned, buffer (next to the burn scar) or disturbed (another fire).
+      Any cell absent from this table is a control.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [episode_id, h3_cell]}
+    columns:
+      - name: zone
+        data_tests:
+          - accepted_values:
+              arguments: {values: [burned, buffer, disturbed]}
+
+  - name: int_occurrences_labeled
+    description: Each occurrence, for every fire episode of its region, with its period (before / during / after) and zone.
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments: {combination_of_columns: [episode_id, gbif_id]}
+    columns:
+      - name: gbif_id
+        data_tests: [not_null]
+      - name: period
+        data_tests:
+          - accepted_values:
+              arguments: {values: [before, during, after]}
+      - name: zone
+        data_tests:
+          - accepted_values:
+              arguments: {values: [burned, buffer, disturbed, control]}
+      - name: is_active_dataset
+        description: True when the dataset has records in the region's "after" window (publishes without long delay).
+        data_tests: [not_null]
+      - name: in_comparison
+        description: True when the observation enters before/after comparisons (active dataset, matched season).
+        data_tests: [not_null]

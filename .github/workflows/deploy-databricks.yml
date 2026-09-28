@@ -1,0 +1,31 @@
+# Deploys the Databricks job defined in databricks.yml (ingestion + dbt, monthly schedule).
+# Repository secrets needed: DATABRICKS_HOST (hostname, no https://), DATABRICKS_TOKEN.
+name: Deploy Databricks pipeline
+
+on:
+  push:
+    branches: [main]
+    paths: ["databricks.yml", "ingestion/**", "dbt/**", "databricks/**", ".github/workflows/deploy-databricks.yml"]
+  workflow_dispatch:
+    inputs:
+      run_now:
+        description: Also start a pipeline run after deploying
+        type: boolean
+        default: false
+
+concurrency:
+  group: databricks-deploy
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      DATABRICKS_HOST: https://${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: databricks/setup-cli@main
+      - run: databricks bundle validate -t prod
+      - run: databricks bundle deploy -t prod
+      - if: ${{ inputs.run_now }}
+        run: databricks bundle run wildfire_pipeline -t prod --no-wait

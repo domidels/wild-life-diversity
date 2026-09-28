@@ -1,0 +1,7 @@
+episode_id,region_id,fire_name,fire_start,fire_end,before_months
+kangaroo_island_2019,kangaroo_island,Black Summer (Ravine fire),2019-12-20,2020-02-06,24
+north_evia_2021,north_evia,Evia wildfires,2021-08-03,2021-08-20,24
+pantanal_2020,pantanal,Pantanal fires,2020-07-01,2020-10-31,24
+dixie_california_2021,dixie_california,Dixie Fire,2021-07-13,2021-10-25,24
+landes_gironde_2022,landes_gironde,La Teste-de-Buch & Landiras fires,2022-07-12,2022-09-20,24
+landes_gironde_2026,landes_gironde,Saumos & Biscarrosse fires,2026-07-22,2026-08-01,60

@@ -1,0 +1,51 @@
+# Publishes the dashboard to GitHub Pages.
+# If Databricks secrets are set, web/data/*.json is first refreshed from the gold tables;
+# otherwise the JSON committed in the repository is published as is.
+# Runs on push, by hand, and monthly — the day after the Databricks job (1st, 03:00 UTC).
+# One-time setup: repo Settings > Pages > Source: "GitHub Actions".
+name: Deploy dashboard
+
+on:
+  push:
+    branches: [main]
+    paths: ["web/**", "export/**", ".github/workflows/deploy-pages.yml"]
+  schedule:
+    - cron: "0 6 2 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        if: env.DATABRICKS_TOKEN != ''
+        with:
+          python-version: "3.12"
+      - name: Export gold tables from Databricks
+        if: env.DATABRICKS_TOKEN != ''
+        run: |
+          pip install "databricks-sql-connector>=3.0" "python-dotenv>=1.0"
+          python export/export_marts.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+      - id: deployment
+        uses: actions/deploy-pages@v4

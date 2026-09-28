@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>After the Fire</title>
+  <meta name="description" content="Biodiversity observations before and after major wildfires — GBIF x NASA FIRMS, built with Databricks and dbt.">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="wrap">
+    <header class="hero">
+      <p class="eyebrow">GBIF × NASA FIRMS · Databricks · dbt</p>
+      <h1>After the fire: what changed in what people observe?</h1>
+      <p class="lede">
+        Satellites record where fire burned. Naturalists record which species they see.
+        Crossing the two, before and after major wildfires, we compare burned land with
+        nearby unburned land to separate the effect of fire from everything else.
+      </p>
+    </header>
+  </div>
+
+  <nav class="toolbar" aria-label="Region">
+    <div class="wrap">
+      <div class="segmented" id="region-picker" role="group" aria-label="Study region"></div>
+      <div class="segmented" id="episode-picker" role="group" aria-label="Fire episode" hidden></div>
+      <div class="spacer"></div>
+      <button class="ghost" id="theme-toggle" type="button">Theme</button>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <!-- 1. The fire -->
+    <section id="fire">
+      <h2><span class="step">1</span><span id="fire-title">The fire</span></h2>
+      <p class="section-lede" id="fire-lede"></p>
+      <div class="kpis" id="kpis"></div>
+      <div class="card">
+        <h3>Burn scar and study zones</h3>
+        <p class="sub">H3 hexagons of ~5 km². A cell is <em>burned</em> when satellites detected fire in it; it takes the colour of its most recent fire.</p>
+        <div class="legend" id="map-legend"></div>
+        <div id="map" role="img" aria-label="Map of burned, control and excluded cells"></div>
+      </div>
+    </section>
+
+    <!-- 2. Observation effort -->
+    <section id="effort">
+      <h2><span class="step">2</span>Who was looking, and when?</h2>
+      <p class="section-lede">
+        Before reading any biology, check the observers. Counts rise every year as apps like
+        iNaturalist grow, and burned areas are often closed for months. Indexing each zone to its own
+        pre-fire average shows whether burned and control land move together.
+      </p>
+      <div class="card">
+        <div class="controls">
+          <div class="segmented" id="timeline-mode" role="group" aria-label="Scale">
+            <button type="button" data-mode="indexed" aria-pressed="true">Indexed (before = 100)</button>
+            <button type="button" data-mode="raw" aria-pressed="false">Raw counts</button>
+          </div>
+        </div>
+        <div class="legend">
+          <span><i class="swatch line" style="background:var(--burned)"></i>Burned</span>
+          <span><i class="swatch line" style="background:var(--control)"></i>Control</span>
+          <span><i class="swatch" style="background:var(--burned);opacity:.25"></i>Fire periods</span>
+        </div>
+        <h3>Observations per month</h3>
+        <div class="chart" id="chart-timeline"></div>
+        <h3 style="margin-top:18px">Satellite fire detections per month, whole region</h3>
+        <div class="chart" id="chart-fire"></div>
+      </div>
+    </section>
+
+    <!-- 3. The verdict -->
+    <section id="verdict">
+      <h2><span class="step">3</span>Did the burned area lose species?</h2>
+      <p class="section-lede">
+        The comparison that matters: how the burned area changed <em>relative to</em> the control.
+        Richness is rarefied — counted on samples of equal size — so more observers do not mean more species.
+      </p>
+      <div class="grid-3-1">
+        <div class="grid-2">
+          <div class="card">
+            <h3>Species richness (rarefied)</h3>
+            <p class="sub" id="rarefaction-note"></p>
+            <div class="chart" id="chart-slope-richness"></div>
+          </div>
+          <div class="card">
+            <h3>Observations</h3>
+            <p class="sub">Total over each compared period</p>
+            <div class="chart" id="chart-slope-obs"></div>
+          </div>
+        </div>
+        <div class="card" id="verdict-card"></div>
+      </div>
+    </section>
+
+    <!-- 4. Species -->
+    <section id="species">
+      <h2><span class="step">4</span>Which species were seen more, or less?</h2>
+      <p class="section-lede">
+        Each bar compares a species' share of observations after vs before the fire, in burned land,
+        minus the same change in the control. Right: relatively more frequent where it burned.
+      </p>
+      <div class="grid-3-1">
+        <div class="card">
+          <div class="controls">
+            <label for="taxon-filter">Group</label>
+            <select id="taxon-filter"></select>
+          </div>
+          <div class="chart" id="chart-species"></div>
+          <details>
+            <summary>Show as table</summary>
+            <div class="table-wrap" id="table-species"></div>
+          </details>
+        </div>
+        <div class="card">
+          <h3>New to the region after the fire</h3>
+          <p class="sub">Never recorded in the compared period before, at least 3 records after. Often pioneer plants, or simply newly-looked-for species.</p>
+          <div class="chips" id="new-species"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Community mix -->
+    <section id="mix">
+      <h2><span class="step">5</span>Did the mix of life change?</h2>
+      <p class="section-lede">
+        Share of observations by group. A move that appears in the burned area only is a candidate fire
+        effect; a move in both zones is a change in what people record.
+      </p>
+      <div class="card">
+        <p class="sub" id="mix-warning" hidden>Too few observations in the burned area to read this chart yet — shown for transparency.</p>
+        <div class="legend">
+          <span><i class="swatch dot" style="background:var(--burned)"></i>Burned</span>
+          <span><i class="swatch dot" style="background:var(--control)"></i>Control</span>
+          <span><i class="swatch ring"></i>Before</span>
+          <span><i class="swatch dot" style="background:var(--neutral-mark)"></i>After</span>
+        </div>
+        <div class="chart" id="chart-mix"></div>
+      </div>
+    </section>
+
+    <!-- 6. Latitude -->
+    <section id="latitude">
+      <h2><span class="step">6</span>Did any species' observations move?</h2>
+      <p class="section-lede">
+        Mean latitude of each species' observations, after minus before. Whiskers show ±2 standard errors;
+        filled dots are shifts larger than that. Within one region this often reflects where observers went — a lead to check, not a conclusion.
+      </p>
+      <div class="card">
+        <div class="chart" id="chart-latitude"></div>
+      </div>
+    </section>
+
+    <!-- 7. Method -->
+    <section id="method">
+      <h2><span class="step">7</span>How to read this</h2>
+      <div class="method">
+        <div class="card">
+          <h3>Design: BACI</h3>
+          <p>Before-After-Control-Impact. For each metric,
+            <br><strong>effect = (burned after ÷ before) ÷ (control after ÷ before)</strong>.<br>
+            Dividing by the control cancels changes that happened everywhere: more app users, a rainy year, a lockdown.</p>
+        </div>
+        <div class="card">
+          <h3>Limits</h3>
+          <ul>
+            <li>GBIF records presence, not abundance: these are <em>observations</em>, not populations.</li>
+            <li>Observers avoid burned land for a while, then come back to look — effort itself reacts to fire.</li>
+            <li>Control cells are not random: they may differ in habitat or access.</li>
+            <li>“New to the region” is sensitive to effort and to taxonomic changes.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3>Pipeline</h3>
+          <ol class="pipeline">
+            <li>A monthly Databricks job pulls GBIF occurrences and NASA FIRMS detections into a Unity Catalog volume.</li>
+            <li>dbt builds bronze → silver → gold tables: H3 grid, burn zones per fire, BACI, rarefaction — tested at every layer.</li>
+            <li>GitHub Actions exports the gold tables to JSON and publishes this page.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap">
+    Data: <a href="https://www.gbif.org/">GBIF.org</a> occurrence records (see dataset citations in the repository) ·
+    <a href="https://firms.modaps.eosdis.nasa.gov/">NASA FIRMS</a> VIIRS active fire detections ·
+    <span id="generated-at"></span>
+  </footer>
+
+  <div class="tooltip" id="tooltip" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/h3-js@4.1.0/dist/h3-js.umd.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

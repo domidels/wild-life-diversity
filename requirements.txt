@@ -1,0 +1,5 @@
+requests>=2.31
+python-dotenv>=1.0
+dbt-databricks>=1.10
+databricks-sql-connector>=3.0
+databricks-sdk>=0.30

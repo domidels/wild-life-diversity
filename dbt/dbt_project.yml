@@ -1,0 +1,69 @@
+name: wildfire_biodiversity
+version: "1.0.0"
+config-version: 2
+profile: wildfire_biodiversity
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Where ingestion lands raw CSVs (a Unity Catalog volume).
+  landing_path: /Volumes/workspace/wildfire_raw/landing
+  # Months analysed after the fire ends (keep in sync with ingestion/common.py).
+  # The months analysed BEFORE the fire are set per episode: fire_episodes.before_months.
+  window_months: 24
+  # H3 grid: resolution 7 = hexagons of ~5.2 km².
+  h3_resolution: 7
+  h3_cell_area_km2: 5.16
+  # A cell is "burned" with at least this many nominal/high-confidence detections during the fire.
+  min_detections_burned: 2
+  # Rings of cells around the burn scar kept out of both groups (edge effects).
+  buffer_rings: 2
+  # Observations with a larger coordinate uncertainty are dropped.
+  max_coord_uncertainty_m: 2000
+  # Only field observations: specimens in museums/zoos say nothing about the fire.
+  kept_basis_of_record: ["HUMAN_OBSERVATION", "MACHINE_OBSERVATION", "OBSERVATION"]
+  # Minimum observations of a species (burned + control, before + after) to interpret its response.
+  min_species_obs: 20
+  # ...of which at least this many in the burned zone (otherwise the control alone drives the score).
+  min_species_obs_burned: 10
+  # A BACI effect is flagged unreliable when one of its four boxes has fewer observations.
+  min_box_observations: 100
+  # Minimum observations per period for a latitude shift.
+  min_obs_latitude_shift: 30
+  # Upper bound for the rarefaction sample size.
+  rarefaction_cap: 1000
+
+seeds:
+  wildfire_biodiversity:
+    +schema: ref
+    regions:
+      +column_types:
+        is_active: boolean
+        min_lon: double
+        min_lat: double
+        max_lon: double
+        max_lat: double
+    fire_episodes:
+      +column_types:
+        fire_start: date
+        fire_end: date
+        before_months: int
+
+models:
+  wildfire_biodiversity:
+    bronze:
+      +schema: bronze
+      +materialized: table
+    staging:
+      +schema: silver
+      +materialized: view
+    intermediate:
+      +schema: silver
+      +materialized: table
+    marts:
+      +schema: gold
+      +materialized: table
