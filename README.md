@@ -8,8 +8,6 @@ beyond what changed everywhere else?
 
 **[Live dashboard →](https://domidels.github.io/wild-life-diversity/)**
 
-![Dashboard screenshot](docs/screenshot.png)
-
 ## Study regions and fire episodes
 
 | Region | Fire episode | Dates |

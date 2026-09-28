@@ -140,8 +140,7 @@ git push -u origin main
 ```
 
 Puis sur GitHub : **Settings → Pages → Source : GitHub Actions**. Le workflow
-`deploy-pages.yml` publie `web/` à chaque push. Pense à rafraîchir `docs/screenshot.png`
-(la capture du README) quand le dashboard évolue.
+`deploy-pages.yml` publie `web/` à chaque push.
 
 ---
 
