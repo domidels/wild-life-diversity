@@ -29,10 +29,11 @@
     </div>
   </nav>
 
-  <main class="wrap">
+  <div class="wrap layout">
+  <main>
     <!-- 1. The fire -->
     <section id="fire">
-      <h2><span class="step">1</span><span id="fire-title">The fire</span></h2>
+      <h2><span class="step">01</span><span id="fire-title">The fire</span></h2>
       <p class="section-lede" id="fire-lede"></p>
       <div class="kpis" id="kpis"></div>
       <div class="card">
@@ -51,7 +52,7 @@
 
     <!-- 2. Observation effort -->
     <section id="effort">
-      <h2><span class="step">2</span>Who was looking, and when?</h2>
+      <h2><span class="step">02</span>Who was looking, and when?</h2>
       <p class="section-lede">
         Before reading any biology, check the observers. Counts rise every year as apps like
         iNaturalist grow, and burned areas are often closed for months. Indexing each zone to its own
@@ -78,7 +79,7 @@
 
     <!-- 3. The verdict -->
     <section id="verdict">
-      <h2><span class="step">3</span>Did the burned area lose species?</h2>
+      <h2><span class="step">03</span>Did the burned area lose species?</h2>
       <p class="section-lede">
         The comparison that matters: how the burned area changed <em>relative to</em> the control.
         Richness is rarefied — counted on samples of equal size — so more observers do not mean more species.
@@ -102,7 +103,7 @@
 
     <!-- 4. Species -->
     <section id="species">
-      <h2><span class="step">4</span>Which species were seen more, or less?</h2>
+      <h2><span class="step">04</span>Which species were seen more, or less?</h2>
       <p class="section-lede">
         Each bar compares a species' share of observations after vs before the fire, in burned land,
         minus the same change in the control. Right: relatively more frequent where it burned.
@@ -129,7 +130,7 @@
 
     <!-- 5. Community mix -->
     <section id="mix">
-      <h2><span class="step">5</span>Did the mix of life change?</h2>
+      <h2><span class="step">05</span>Did the mix of life change?</h2>
       <p class="section-lede">
         Share of observations by group. A move that appears in the burned area only is a candidate fire
         effect; a move in both zones is a change in what people record.
@@ -148,7 +149,7 @@
 
     <!-- 6. Latitude -->
     <section id="latitude">
-      <h2><span class="step">6</span>Did any species' observations move?</h2>
+      <h2><span class="step">06</span>Did any species' observations move?</h2>
       <p class="section-lede">
         Mean latitude of each species' observations, after minus before. Whiskers show ±2 standard errors;
         filled dots are shifts larger than that. Within one region this often reflects where observers went — a lead to check, not a conclusion.
@@ -160,7 +161,7 @@
 
     <!-- 7. Method -->
     <section id="method">
-      <h2><span class="step">7</span>How to read this</h2>
+      <h2><span class="step">07</span>How to read this</h2>
       <div class="method">
         <div class="card">
           <h3>Design: BACI</h3>
@@ -188,6 +189,20 @@
       </div>
     </section>
   </main>
+
+  <aside class="toc" aria-label="Sections">
+    <p class="toc-title">On this page</p>
+    <ol>
+      <li><a href="#fire"><span class="toc-num">01</span>The fire</a></li>
+      <li><a href="#effort"><span class="toc-num">02</span>Observation effort</a></li>
+      <li><a href="#verdict"><span class="toc-num">03</span>Species richness</a></li>
+      <li><a href="#species"><span class="toc-num">04</span>Winners and losers</a></li>
+      <li><a href="#mix"><span class="toc-num">05</span>Mix of life</a></li>
+      <li><a href="#latitude"><span class="toc-num">06</span>Range shifts</a></li>
+      <li><a href="#method"><span class="toc-num">07</span>How to read this</a></li>
+    </ol>
+  </aside>
+  </div>
 
   <footer class="wrap">
     Data: <a href="https://www.gbif.org/">GBIF.org</a> occurrence records (see dataset citations in the repository) ·

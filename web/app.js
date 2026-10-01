@@ -69,6 +69,8 @@ async function init() {
     resizeTimer = setTimeout(renderCharts, 150);
   });
 
+  setupSectionMenu();
+
   const fromHash = location.hash.slice(1);
   const start = data.dim_episodes.find((e) => e.episode_id === fromHash)
     || oldestEpisode(fromHash)
@@ -80,6 +82,25 @@ try {
   const saved = localStorage.getItem("theme");
   if (saved) document.documentElement.dataset.theme = saved;
 } catch (_) {}
+
+// Highlight the menu entry of the section currently on screen.
+function setupSectionMenu() {
+  const links = new Map([...document.querySelectorAll(".toc a")].map((a) => [a.hash.slice(1), a]));
+  const visible = new Set();
+  const observer = new IntersectionObserver((entries) => {
+    for (const en of entries) en.isIntersecting ? visible.add(en.target.id) : visible.delete(en.target.id);
+    const current = [...links.keys()].find((id) => visible.has(id));
+    if (current) links.forEach((a, id) => a.setAttribute("aria-current", String(id === current)));
+  }, { rootMargin: "-80px 0px -55% 0px" });
+  links.forEach((a, id) => {
+    observer.observe(document.getElementById(id));
+    // Scroll without touching the URL hash, which holds the selected fire.
+    a.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      document.getElementById(id).scrollIntoView({ block: "start" });
+    });
+  });
+}
 
 function selectEpisode(id) {
   state.episode = id;
