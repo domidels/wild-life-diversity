@@ -1,15 +1,18 @@
-"""Download GBIF occurrences for each study region, one CSV per region and month.
+"""Download GBIF occurrences for each active region, one CSV per region and month.
 
-Uses the public occurrence search API (no account needed):
-https://techdocs.gbif.org/en/openapi/v1/occurrence
+Uses the GBIF Download API (asynchronous, free account needed):
+https://techdocs.gbif.org/en/data-use/api-downloads
 
-The search API refuses offsets beyond 100,000 records per query and becomes very
-slow long before that (pages past ~10,000 can hang), so each month is queried
-week by week to keep offsets small. If a single month exceeds that, the script warns — for such
-volumes switch to the GBIF Download API (asynchronous, needs a free account).
+One request per region covers every month still to fetch: GBIF prepares a zipped
+file on its side (usually a few minutes), we download it once and split it by month.
+No paging and no rate limiting, unlike the search API — and every download gets a
+citable DOI, logged in <out>/gbif_citations/.
+
+Credentials: GBIF_USER, GBIF_PASSWORD, GBIF_EMAIL in .env locally, or the Databricks
+secrets wildfire/gbif_user, wildfire/gbif_password, wildfire/gbif_email in a job.
 
 Usage:
-    python ingestion/gbif.py                       # all regions
+    python ingestion/gbif.py                       # active regions
     python ingestion/gbif.py --regions north_evia  # one region
     python ingestion/gbif.py --out /Volumes/workspace/wildfire_raw/landing  # as a Databricks job task
 """
@@ -17,10 +20,15 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
+import io
+import json
 import sys
+import tempfile
 import time
-from concurrent.futures import ThreadPoolExecutor
-from datetime import timedelta
+import zipfile
+from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
@@ -30,18 +38,19 @@ import requests
 HERE = Path(globals().get("__file__") or sys.argv[0]).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from common import DEFAULT_OUT, get_with_retry, load_regions, month_ranges, needs_download, write_csv  # noqa: E402
+from common import (  # noqa: E402
+    DEFAULT_OUT, ROOT, get_secret, get_with_retry, load_regions, month_ranges, needs_download, write_csv,
+)
 
-API = "https://api.gbif.org/v1/occurrence/search"
-PAGE_SIZE = 300          # API maximum
-MAX_OFFSET = 100_000     # API hard limit
-WORKERS = 2              # default months in parallel (more triggers HTTP 429 rate limiting)
+API = "https://api.gbif.org/v1/occurrence/download"
+POLL_SECONDS = 30
+MAX_WAIT_SECONDS = 3 * 3600
 # Same list as the dbt var `kept_basis_of_record`: no need to download museum specimens.
 BASIS_OF_RECORD = ["HUMAN_OBSERVATION", "MACHINE_OBSERVATION", "OBSERVATION"]
 
-# GBIF field -> column name in our CSV (snake_case, no SQL reserved words).
+# GBIF SIMPLE_CSV column -> column name in our CSV (snake_case, no SQL reserved words).
 FIELDS = {
-    "key": "gbif_id",
+    "gbifID": "gbif_id",
     "speciesKey": "species_key",
     "species": "species",
     "taxonRank": "taxon_rank",
@@ -59,83 +68,126 @@ FIELDS = {
     "countryCode": "country_code",
 }
 COLUMNS = ["region_id", *FIELDS.values()]
+csv.field_size_limit(sys.maxsize)  # some GBIF text fields are long
 
 
-def fetch_month(session: requests.Session, region, first_day, last_day) -> list[dict]:
-    rows: list[dict] = []
-    start = first_day
-    while start <= last_day:
-        end = min(start + timedelta(days=6), last_day)
-        rows += fetch_range(session, region, start, end)
-        start = end + timedelta(days=1)
-    return rows
+def predicate(region, start, end) -> dict:
+    w, s, e, n = region.min_lon, region.min_lat, region.max_lon, region.max_lat
+    return {"type": "and", "predicates": [
+        {"type": "within", "geometry": f"POLYGON(({w} {s},{e} {s},{e} {n},{w} {n},{w} {s}))"},
+        {"type": "greaterThanOrEquals", "key": "EVENT_DATE", "value": start.isoformat()},
+        {"type": "lessThanOrEquals", "key": "EVENT_DATE", "value": end.isoformat()},
+        {"type": "equals", "key": "HAS_COORDINATE", "value": "true"},
+        {"type": "equals", "key": "HAS_GEOSPATIAL_ISSUE", "value": "false"},
+        {"type": "equals", "key": "OCCURRENCE_STATUS", "value": "PRESENT"},
+        {"type": "in", "key": "BASIS_OF_RECORD", "values": BASIS_OF_RECORD},
+    ]}
 
 
-def fetch_range(session: requests.Session, region, first_day, last_day) -> list[dict]:
-    params = {
-        "decimalLatitude": f"{region.min_lat},{region.max_lat}",
-        "decimalLongitude": f"{region.min_lon},{region.max_lon}",
-        "eventDate": f"{first_day.isoformat()},{last_day.isoformat()}",
-        "hasCoordinate": "true",
-        "hasGeospatialIssue": "false",
-        "occurrenceStatus": "PRESENT",
-        "basisOfRecord": BASIS_OF_RECORD,  # requests repeats the parameter for each value
-        "limit": PAGE_SIZE,
-        "offset": 0,
+def request_download(session, credentials, region, start, end) -> str:
+    user, password, email = credentials
+    body = {
+        "creator": user,
+        "notificationAddresses": [email],
+        "sendNotification": False,
+        "format": "SIMPLE_CSV",
+        "predicate": predicate(region, start, end),
     }
-    rows: list[dict] = []
-    while True:
-        page = get_with_retry(session, API, params).json()
-        if params["offset"] == 0 and page["count"] > MAX_OFFSET:
-            print(f"  ! {page['count']:,} records from {first_day}: only the first "
-                  f"{MAX_OFFSET:,} are reachable — use the GBIF Download API for this region.")
-        for rec in page["results"]:
-            if rec.get("speciesKey") is None:
-                continue  # identified above species level: unusable for richness
-            rows.append({"region_id": region.region_id,
-                         **{col: rec.get(field) for field, col in FIELDS.items()}})
-        params["offset"] += PAGE_SIZE
-        if page["endOfRecords"] or params["offset"] >= MAX_OFFSET:
-            return rows
-        time.sleep(0.1)  # be polite to a free public API
+    resp = session.post(f"{API}/request", json=body, auth=(user, password), timeout=60)
+    if resp.status_code == 401:
+        raise SystemExit("GBIF refused the credentials (GBIF_USER / GBIF_PASSWORD).")
+    resp.raise_for_status()
+    return resp.text.strip()
+
+
+def wait_for(session, key: str) -> dict:
+    waited = 0
+    while waited < MAX_WAIT_SECONDS:
+        info = get_with_retry(session, f"{API}/{key}").json()
+        if info["status"] == "SUCCEEDED":
+            return info
+        if info["status"] in ("FAILED", "KILLED", "CANCELLED"):
+            raise RuntimeError(f"GBIF download {key} ended with status {info['status']}")
+        time.sleep(POLL_SECONDS)
+        waited += POLL_SECONDS
+    raise TimeoutError(f"GBIF download {key} not ready after {MAX_WAIT_SECONDS // 3600} h")
+
+
+def read_by_month(session, info: dict, region_id: str) -> dict[str, list[dict]]:
+    """Stream the zip to a temp file and split its rows by month of eventDate (YYYYMM)."""
+    by_month: dict[str, list[dict]] = defaultdict(list)
+    with tempfile.TemporaryFile() as tmp:
+        with session.get(info["downloadLink"], stream=True, timeout=300) as resp:
+            resp.raise_for_status()
+            for chunk in resp.iter_content(1 << 20):
+                tmp.write(chunk)
+        tmp.seek(0)
+        with zipfile.ZipFile(tmp) as zf:
+            name = next(n for n in zf.namelist() if n.endswith(".csv"))
+            with zf.open(name) as raw:
+                text = io.TextIOWrapper(raw, encoding="utf-8", newline="")
+                for rec in csv.DictReader(text, delimiter="\t", quoting=csv.QUOTE_NONE):
+                    if not rec.get("speciesKey") or not rec.get("eventDate"):
+                        continue  # identified above species level, or undated: unusable
+                    month = rec["eventDate"][:7].replace("-", "")
+                    by_month[month].append({"region_id": region_id,
+                                            **{col: rec.get(field) for field, col in FIELDS.items()}})
+    return by_month
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--regions", nargs="*", help="region_ids from dbt/seeds/regions.csv (default: all)")
+    parser.add_argument("--regions", nargs="*", help="region_ids from dbt/seeds/regions.csv (default: active ones)")
     parser.add_argument("--out", default=str(DEFAULT_OUT), help="landing root folder (local or /Volumes/...)")
     parser.add_argument("--force", action="store_true", help="re-download every month")
-    parser.add_argument("--workers", type=int, default=WORKERS, help="months downloaded in parallel")
     parser.add_argument("--refresh-months", type=int, default=0,
                         help="also re-download the last N months, which keep filling up (default: 0)")
     args = parser.parse_args()
 
+    try:
+        from dotenv import load_dotenv
+        load_dotenv(ROOT / ".env")
+    except ImportError:
+        pass
+    credentials = tuple(get_secret(k) for k in ("GBIF_USER", "GBIF_PASSWORD", "GBIF_EMAIL"))
+    if not all(credentials):
+        raise SystemExit("GBIF_USER / GBIF_PASSWORD / GBIF_EMAIL are not set "
+                         "(.env locally, secrets wildfire/gbif_* in Databricks).")
+
     out_dir = Path(args.out) / "gbif"
+    citations_dir = Path(args.out) / "gbif_citations"  # outside gbif/: dbt reads every file there as CSV
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    failed: list[str] = []
-
-    def download(region, first_day, last_day) -> int:
-        path = out_dir / f"{region.region_id}_{first_day:%Y%m}.csv"
-        try:
-            rows = fetch_month(requests.Session(), region, first_day, last_day)
-        except requests.RequestException as err:  # one bad month must not sink the others
-            print(f"  {first_day:%Y-%m}: FAILED ({err}) — will be retried on the next run", flush=True)
-            failed.append(f"{region.region_id} {first_day:%Y-%m}")
-            return 0
-        write_csv(path, COLUMNS, rows)  # only complete months land, so re-runs resume cleanly
-        print(f"  {first_day:%Y-%m}: {len(rows):>6,} occurrences", flush=True)
-        return len(rows)
+    citations_dir.mkdir(parents=True, exist_ok=True)
+    session = requests.Session()
 
     for region in load_regions(args.regions):
-        print(f"{region.region_name}: {region.study_start} -> {region.study_end}", flush=True)
         months = [(a, b) for a, b in month_ranges(region.study_start, region.study_end)
                   if needs_download(out_dir / f"{region.region_id}_{a:%Y%m}.csv", a, args.force, args.refresh_months)]
-        with ThreadPoolExecutor(args.workers) as pool:
-            total = sum(pool.map(lambda m: download(region, *m), months))
-        print(f"  => {total:,} new occurrences written to {out_dir}")
-    if failed:
-        raise SystemExit(f"{len(failed)} month(s) failed: {', '.join(failed)}")
+        if not months:
+            print(f"{region.region_name}: up to date", flush=True)
+            continue
+        start, end = months[0][0], months[-1][1]
+        print(f"{region.region_name}: {len(months)} month(s) to fetch, {start} -> {end}", flush=True)
+
+        key = request_download(session, credentials, region, start, end)
+        print(f"  GBIF download {key} requested, waiting for GBIF to prepare it...", flush=True)
+        info = wait_for(session, key)
+        print(f"  ready: {info.get('totalRecords', 0):,} records, DOI {info.get('doi')}", flush=True)
+
+        by_month = read_by_month(session, info, region.region_id)
+        total = 0
+        for first_day, _ in months:
+            rows = by_month.get(f"{first_day:%Y%m}", [])
+            write_csv(out_dir / f"{region.region_id}_{first_day:%Y%m}.csv", COLUMNS, rows)
+            total += len(rows)
+        print(f"  => {total:,} occurrences written in {len(months)} monthly files", flush=True)
+
+        (citations_dir / f"{region.region_id}_{key}.json").write_text(json.dumps({
+            "region_id": region.region_id, "download_key": key, "doi": info.get("doi"),
+            "total_records": info.get("totalRecords"), "start": start.isoformat(), "end": end.isoformat(),
+            "downloaded_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        }, indent=2))
+
 
 if __name__ == "__main__":
     main()

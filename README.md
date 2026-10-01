@@ -89,8 +89,8 @@ two business rules (rarefied richness never exceeds observed richness; taxon sha
 Setup guide (French): [docs/GUIDE_DEMARRAGE.md](docs/GUIDE_DEMARRAGE.md) · How the data is presented and why: [docs/GUIDE_PRESENTATION.md](docs/GUIDE_PRESENTATION.md).
 
 **In the cloud (recommended)** — add the repository secrets `DATABRICKS_HOST`,
-`DATABRICKS_HTTP_PATH`, `DATABRICKS_TOKEN`, store the NASA key in the Databricks secret
-`wildfire/firms_map_key`, and push: GitHub deploys the job, Databricks refreshes the data on the
+`DATABRICKS_HTTP_PATH`, `DATABRICKS_TOKEN`, store the NASA key and the GBIF account in the
+Databricks secret scope `wildfire` (`firms_map_key`, `gbif_user`, `gbif_password`, `gbif_email`), and push: GitHub deploys the job, Databricks refreshes the data on the
 1st of each month, GitHub Pages republishes on the 2nd.
 
 **On a laptop** (development):
@@ -113,6 +113,6 @@ D3.js · Leaflet · h3-js · GitHub Actions / Pages
 
 ## Data sources & citation
 
-- GBIF.org — occurrence data via the GBIF API. For publication, cite the datasets used; for large
-  extractions prefer the GBIF Download API, which issues a citable DOI.
+- GBIF.org — occurrence data via the GBIF Download API. Each download has a citable DOI, logged
+  in the volume under `gbif_citations/`; cite it when publishing results.
 - NASA FIRMS — VIIRS S-NPP 375 m active fire product (standard processing), NASA LANCE/FIRMS.

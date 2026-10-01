@@ -131,8 +131,8 @@ graphiques, l'honnêteté des conclusions.
    sur 15 ans à l'échelle du globe (via l'API Download de GBIF) → une section « climate shift ».
 2. **Détection automatique des grands feux** : clusteriser les détections FIRMS (cellules H3 voisines,
    jours consécutifs) pour trouver les événements au lieu de les choisir à la main.
-3. **API Download de GBIF** : une seule requête asynchrone par région au lieu de milliers de pages
-   (plus rapide, pas de limite de débit, et un DOI citable pour les données).
+3. **Citations** : afficher sur le dashboard les DOI des téléchargements GBIF (`gbif_citations/`),
+   comme l'exige la licence des jeux de données.
 4. **Incrémental** : modèles dbt `incremental` pour ne retraiter que les nouveaux mois.
 5. **Durée de récupération** : suivre l'effet BACI mois par mois après le feu pour estimer quand la
    zone brûlée rejoint le témoin.

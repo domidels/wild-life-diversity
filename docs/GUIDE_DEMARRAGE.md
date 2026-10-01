@@ -66,6 +66,10 @@ Ouvre http://localhost:8000. `web/data/` contient le dernier export des vraies d
 **Clé NASA FIRMS** : demande-la sur https://firms.modaps.eosdis.nasa.gov/api/map_key/ (email, immédiat),
 puis mets-la dans `.env` (`FIRMS_MAP_KEY=`).
 
+**Compte GBIF** : crée-le sur https://www.gbif.org/user/profile (gratuit), puis remplis `GBIF_USER`,
+`GBIF_PASSWORD` et `GBIF_EMAIL` dans `.env`. Le script utilise l'API Download : une seule requête
+par région, préparée par GBIF en quelques minutes, avec un DOI citable (noté dans `gbif_citations/`).
+
 ```bash
 python ingestion/gbif.py --regions north_evia     # commence par une seule région
 python ingestion/firms.py --regions north_evia
@@ -76,7 +80,8 @@ s'arrête, relance-le : les mois déjà téléchargés sont sautés.
 
 ✅ `ls data/raw/gbif | wc -l` ≈ 50 fichiers pour une région.
 
-Quand ça marche pour une région, lance sans `--regions` pour les quatre.
+Quand ça marche pour une région, lance sans `--regions` : seules les régions actives
+(`is_active` dans `regions.csv`) sont téléchargées.
 
 ## 5. Envoyer les fichiers dans Databricks
 
@@ -156,8 +161,9 @@ Une fois en place, plus rien ne tourne en local :
 
 **Mise en place (une seule fois) :**
 
-1. **Clé NASA dans Databricks** — le job la lit dans le secret `wildfire/firms_map_key`
-   (déjà créé pour toi). Pour la changer : `databricks secrets put-secret wildfire firms_map_key`.
+1. **Secrets dans Databricks** (scope `wildfire`) — le job y lit la clé NASA (`firms_map_key`)
+   et le compte GBIF (`gbif_user`, `gbif_password`, `gbif_email`). Pour en changer un :
+   `databricks secrets put-secret wildfire <nom>`.
 2. **Secrets GitHub** — sur le repo : *Settings → Secrets and variables → Actions → New repository secret* :
    `DATABRICKS_HOST` (sans `https://`), `DATABRICKS_HTTP_PATH`, `DATABRICKS_TOKEN` — les mêmes valeurs que `.env`.
 3. **GitHub Pages** — *Settings → Pages → Source : GitHub Actions*.
@@ -180,5 +186,5 @@ continuent de les compléter.
 | `h3_longlatash3` inconnu | Le warehouse n'est pas un SQL warehouse (serverless/pro). Utilise le SQL warehouse, pas un cluster classique. |
 | `read_files` : chemin introuvable | Les CSV ne sont pas dans `landing/gbif/` et `landing/firms/`, ou `landing_path` dans `dbt_project.yml` diffère. |
 | Effet BACI vide (« Not enough observations ») | Une des 4 cases BACI (brûlé/témoin × avant/après) est vide : réduis `min_detections_burned` ou agrandis la bbox de la région. |
-| GBIF : « only the first 100,000 are reachable » | Trop d'observations dans un mois : passe par l'[API Download de GBIF](https://techdocs.gbif.org/en/data-use/api-downloads). |
+| GBIF : « refused the credentials » | `GBIF_USER` / `GBIF_PASSWORD` faux dans `.env` ou dans les secrets Databricks `wildfire/gbif_*`. |
 | FIRMS : `Invalid MAP_KEY` | Clé absente de `.env`, ou quota dépassé (5 000 requêtes / 10 min) : attends 10 minutes. |
