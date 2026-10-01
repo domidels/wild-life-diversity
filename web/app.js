@@ -29,14 +29,14 @@ async function init() {
   TABLES.forEach((t, i) => (data[t] = tables[i]));
   document.getElementById("generated-at").textContent = `Data snapshot ${meta.generated_at.slice(0, 10)}`;
 
-  // One button per region; it opens the region's most recent fire.
+  // One button per region; it opens the region's oldest fire.
   const picker = document.getElementById("region-picker");
   for (const e of data.dim_episodes.filter((d) => d.recency_rank === 1)) {
     const b = document.createElement("button");
     b.type = "button";
     b.textContent = e.region_name;
     b.dataset.region = e.region_id;
-    b.addEventListener("click", () => selectEpisode(e.episode_id));
+    b.addEventListener("click", () => selectEpisode(oldestEpisode(e.region_id).episode_id));
     picker.appendChild(b);
   }
 
@@ -71,8 +71,8 @@ async function init() {
 
   const fromHash = location.hash.slice(1);
   const start = data.dim_episodes.find((e) => e.episode_id === fromHash)
-    || data.dim_episodes.find((e) => e.region_id === fromHash && e.recency_rank === 1)
-    || data.dim_episodes.find((e) => e.recency_rank === 1);
+    || oldestEpisode(fromHash)
+    || oldestEpisode(data.dim_episodes.find((e) => e.recency_rank === 1).region_id);
   selectEpisode(start.episode_id);
 }
 
@@ -96,6 +96,7 @@ function selectEpisode(id) {
 
 const episode = () => data.dim_episodes.find((e) => e.episode_id === state.episode);
 const regionEpisodes = () => d3.sort(data.dim_episodes.filter((e) => e.region_id === episode().region_id), (e) => e.recency_rank);
+const oldestEpisode = (regionId) => d3.greatest(data.dim_episodes.filter((e) => e.region_id === regionId), (e) => e.recency_rank);
 const forEpisode = (table) => data[table].filter((d) => d.episode_id === state.episode);
 const forRegion = (table) => data[table].filter((d) => d.region_id === episode().region_id);
 // Red ramp: the most recent fire of a region is bright red, older ones dark red.
