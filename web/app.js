@@ -106,7 +106,7 @@ const fireYear = (ep) => ep.fire_start.slice(0, 4);
 function renderEpisodePicker() {
   const eps = regionEpisodes();
   const picker = document.getElementById("episode-picker");
-  picker.hidden = eps.length < 2;
+  document.getElementById("episode-bar").hidden = eps.length < 2;
   picker.innerHTML = "";
   for (const e of eps) {
     const b = document.createElement("button");
@@ -189,11 +189,16 @@ function renderMap() {
   if (!map) {
     map = L.map("map", { preferCanvas: true, scrollWheelZoom: false, attributionControl: true });
   }
-  // Esri gray canvas basemaps: free with attribution, no API key.
-  const tiles = `https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_${dark ? "Dark" : "Light"}_Gray_Base/MapServer/tile/{z}/{y}/{x}`;
+  // Free basemaps, no API key: CARTO Voyager (light-blue sea) in light mode, Esri dark gray in dark mode.
+  const tiles = dark
+    ? "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
+    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png";
   if (tileLayer) tileLayer.remove();
   tileLayer = L.tileLayer(tiles, {
-    attribution: "Basemap &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors",
+    attribution: dark
+      ? "Basemap &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors"
+      : "&copy; OpenStreetMap contributors &copy; CARTO",
+    subdomains: "abcd",
     maxZoom: 16,
   }).addTo(map);
 

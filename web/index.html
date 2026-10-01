@@ -24,7 +24,6 @@
   <nav class="toolbar" aria-label="Region">
     <div class="wrap">
       <div class="segmented" id="region-picker" role="group" aria-label="Study region"></div>
-      <div class="segmented" id="episode-picker" role="group" aria-label="Fire episode" hidden></div>
       <div class="spacer"></div>
       <button class="ghost" id="theme-toggle" type="button">Theme</button>
     </div>
@@ -43,6 +42,12 @@
         <div id="map" role="img" aria-label="Map of burned, control and excluded cells"></div>
       </div>
     </section>
+
+    <!-- Fire year: drives sections 2 onwards -->
+    <div class="episode-bar" id="episode-bar" hidden>
+      <span class="episode-label">Fire year</span>
+      <div class="segmented" id="episode-picker" role="group" aria-label="Fire episode"></div>
+    </div>
 
     <!-- 2. Observation effort -->
     <section id="effort">
