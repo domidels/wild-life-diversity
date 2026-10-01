@@ -189,16 +189,16 @@ function renderMap() {
   if (!map) {
     map = L.map("map", { preferCanvas: true, scrollWheelZoom: false, attributionControl: true });
   }
-  // Free basemaps, no API key: CARTO Voyager (light-blue sea) in light mode, Esri dark gray in dark mode.
+  // Esri basemaps, free with attribution, no API key: Ocean (light-blue sea) in light mode, dark gray in dark mode.
   const tiles = dark
     ? "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}"
-    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png";
+    : "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}";
   if (tileLayer) tileLayer.remove();
   tileLayer = L.tileLayer(tiles, {
     attribution: dark
       ? "Basemap &copy; Esri, HERE, Garmin, &copy; OpenStreetMap contributors"
-      : "&copy; OpenStreetMap contributors &copy; CARTO",
-    subdomains: "abcd",
+      : "Basemap &copy; Esri, GEBCO, NOAA, National Geographic, Garmin, HERE",
+    maxNativeZoom: dark ? 16 : 13,
     maxZoom: 16,
   }).addTo(map);
 
