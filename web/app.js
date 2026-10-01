@@ -126,7 +126,8 @@ const fireColor = (ep) => css(`--fire-${Math.min(ep.recency_rank, 2)}`);
 const fireYear = (ep) => ep.fire_start.slice(0, 4);
 
 function renderEpisodePicker() {
-  const eps = regionEpisodes();
+  // Chronological order: oldest fire first.
+  const eps = d3.sort(regionEpisodes(), (e) => e.fire_start);
   const picker = document.getElementById("episode-picker");
   document.getElementById("episode-bar").hidden = eps.length < 2;
   picker.innerHTML = "";
