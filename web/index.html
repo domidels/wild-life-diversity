@@ -55,14 +55,19 @@
         All the data here comes from ordinary people who report the wildlife they see, mostly through free apps such as
         <a href="https://www.inaturalist.org/">iNaturalist</a> (take a photo of a plant or an animal, the app suggests its name,
         other users confirm it) or <a href="https://ebird.org/">eBird</a> for birds. So before asking what happened to nature,
-        we must ask what happened to the observers. Two things change their numbers: these apps gain users every year,
+        we must ask how much people were looking. Two things change that: these apps gain users every year,
         so sightings rise everywhere even when nature does not change; and after a fire, burned land is often closed or
-        unappealing for months, so fewer people go there. To see this, each zone is shown as a percentage of its own
+        unappealing for months, so fewer people go there. We measure it in two ways: the number of <b>sightings</b>
+        logged, and the number of different <b>observers</b> who logged them. Each zone is shown as a percentage of its own
         usual monthly level before the fire (100% = a normal month). If both lines rise or fall together,
         the cause affected the whole region, not just the burned land.
       </p>
       <div class="card">
         <div class="controls">
+          <div class="segmented" id="effort-metric" role="group" aria-label="What is counted">
+            <button type="button" data-metric="n_observations" aria-pressed="true">Sightings</button>
+            <button type="button" data-metric="n_observers" aria-pressed="false">Observers</button>
+          </div>
           <div class="segmented" id="timeline-mode" role="group" aria-label="Scale">
             <button type="button" data-mode="indexed" aria-pressed="true">% of pre-fire average</button>
             <button type="button" data-mode="raw" aria-pressed="false">Raw counts</button>
@@ -73,11 +78,12 @@
           <span><i class="swatch line" style="background:var(--control)"></i>Control</span>
           <span><i class="swatch" style="background:var(--burned);opacity:.25"></i>Fire periods</span>
         </div>
-        <h3>Observations per month</h3>
+        <h3 id="timeline-title">Sightings per month</h3>
         <div class="chart" id="chart-timeline"></div>
         <div class="explain">
-          <p><strong>In plain words.</strong> Each line counts the sightings people logged each month (one photo or one line in a checklist = one sighting, whatever the species and however many individuals). It measures how hard people were looking, not how much wildlife there is. Each zone is shown as a percentage of its own usual level before the fire, so a small zone and a large one can be compared. <b>Raw counts</b> shows the actual numbers.</p>
-          <p class="example"><span class="example-tag">Example</span> If naturalists usually log 200 sightings a month in the burned zone and only 50 in the month after the fire, the red line reads 25%. If the blue line stays near 100% at the same time, people avoided the burned area: fewer sightings there means fewer visitors, not necessarily fewer animals.</p>
+          <p><strong>In plain words.</strong> <b>Sightings</b> counts every report logged that month: one photo or one line in a checklist = one sighting, whatever the species and however many individuals. <b>Observers</b> counts the different people (or accounts) behind those reports: someone who posts 50 photos in a month counts once. The two together tell apart “more people came” from “the same few people posted more”. Neither measures how much wildlife there is. Each zone is shown as a percentage of its own usual level before the fire, so a small zone and a large one can be compared; <b>Raw counts</b> shows the actual numbers.</p>
+          <p class="example"><span class="example-tag">Example</span> Before the fire, a typical month in the burned zone brings 200 sightings from 40 observers. The month after, 50 sightings from 10 observers: both lines read 25%, so a quarter of the usual people came. If instead it were 50 sightings from 40 observers, the same people still came but posted less. If the blue control lines stay near 100% meanwhile, the drop is specific to the burned land: fewer visitors there, not necessarily fewer animals.</p>
+          <p>Observer names are never stored: GBIF's “recorded by” field is replaced by an anonymous code, used only for counting. A group recording together counts as one observer, and a few sources do not give the observer at all.</p>
         </div>
         <h3 style="margin-top:18px">Satellite fire detections per month, whole region</h3>
         <div class="chart" id="chart-fire"></div>

@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import io
 import json
 import sys
@@ -67,8 +68,22 @@ FIELDS = {
     "datasetKey": "dataset_key",
     "countryCode": "country_code",
 }
-COLUMNS = ["region_id", *FIELDS.values()]
+# recordedBy is a person's name or account id: we only keep a hash of it, enough to count
+# distinct observers without storing who they are.
+COLUMNS = ["region_id", *FIELDS.values(), "observer_id"]
 csv.field_size_limit(sys.maxsize)  # some GBIF text fields are long
+
+
+def observer_id(recorded_by: str | None) -> str | None:
+    """Anonymous, stable id of the observer(s): sha256 of the normalised recordedBy, truncated."""
+    name = " ".join((recorded_by or "").lower().split())
+    return hashlib.sha256(name.encode()).hexdigest()[:16] if name else None
+
+
+def has_observer_column(path: Path) -> bool:
+    """Files landed before observer_id existed must be downloaded again."""
+    with path.open(newline="") as f:
+        return "observer_id" in next(csv.reader(f), [])
 
 
 def predicate(region, start, end) -> dict:
@@ -131,7 +146,8 @@ def read_by_month(session, info: dict, region_id: str) -> dict[str, list[dict]]:
                         continue  # identified above species level, or undated: unusable
                     month = rec["eventDate"][:7].replace("-", "")
                     by_month[month].append({"region_id": region_id,
-                                            **{col: rec.get(field) for field, col in FIELDS.items()}})
+                                            **{col: rec.get(field) for field, col in FIELDS.items()},
+                                            "observer_id": observer_id(rec.get("recordedBy"))})
     return by_month
 
 
@@ -162,7 +178,8 @@ def main() -> None:
 
     for region in load_regions(args.regions):
         months = [(a, b) for a, b in month_ranges(region.study_start, region.study_end)
-                  if needs_download(out_dir / f"{region.region_id}_{a:%Y%m}.csv", a, args.force, args.refresh_months)]
+                  if needs_download(path := out_dir / f"{region.region_id}_{a:%Y%m}.csv", a, args.force, args.refresh_months)
+                  or not has_observer_column(path)]
         if not months:
             print(f"{region.region_name}: up to date", flush=True)
             continue

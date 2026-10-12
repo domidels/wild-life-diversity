@@ -34,6 +34,10 @@ models:
                 values: [Birds, Mammals, Reptiles, Amphibians, Insects, Plants, Fungi, Other]
       - name: h3_cell
         data_tests: [not_null]
+      - name: observer_id
+        description: >
+          Anonymous hash of GBIF recordedBy (person or account), null when not provided.
+          Several people recorded together share one id.
 
   - name: stg_firms__detections
     description: Satellite fire detections (VIIRS / MODIS) with a confidence level comparable across instruments.

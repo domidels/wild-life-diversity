@@ -66,6 +66,8 @@ Everything runs in the cloud — no laptop involved once deployed.
 - **Same sources before and after** — GBIF publishers upload with very different delays
   (iNaturalist weekly, eBird yearly, some national programmes years later). Comparisons only use
   datasets that already have records after the fire, so a late publisher cannot fake a decline.
+- **Observation effort** — counted two ways per month and zone: observations, and distinct
+  observers (GBIF `recordedBy`, hashed at ingestion so no name is stored).
 - **Rarefied richness** — species counts grow with effort, so richness is compared at equal sample
   size (Hurlbert's expected species, `Σ 1 − (1 − nᵢ/N)ⁿ`).
 - **Species response** — change in a species' *share* of observations, burned vs control, on a

@@ -15,7 +15,8 @@ with typed as (
         try_cast(left(event_date, 10) as date)      as event_date,
         basis_of_record,
         dataset_key,
-        country_code
+        country_code,
+        nullif(observer_id, '')                     as observer_id
     from {{ ref('bronze_gbif_occurrences') }}
 )
 

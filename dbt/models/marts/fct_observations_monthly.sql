@@ -1,4 +1,5 @@
--- Monthly observation effort and species count, burned vs control, per episode.
+-- Monthly observation effort (observations and distinct observers) and species count,
+-- burned vs control, per episode.
 -- Active datasets only (see int_occurrences_labeled): otherwise late publishers make recent
 -- months look empty. All seasons are kept: this is the effort timeline.
 select
@@ -6,6 +7,7 @@ select
     trunc(event_date, 'MM')      as month,
     zone,
     count(*)                     as n_observations,
+    count(distinct observer_id)  as n_observers,
     count(distinct species_key)  as n_species
 from {{ ref('int_occurrences_labeled') }}
 where zone in ('burned', 'control')

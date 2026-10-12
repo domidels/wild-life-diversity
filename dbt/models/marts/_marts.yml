@@ -16,7 +16,7 @@ models:
           arguments: {combination_of_columns: [region_id, month]}
 
   - name: fct_observations_monthly
-    description: Monthly observations and species, burned vs control.
+    description: Monthly observations, distinct observers and species, burned vs control.
     data_tests:
       - dbt_utils.unique_combination_of_columns:
           arguments: {combination_of_columns: [episode_id, month, zone]}

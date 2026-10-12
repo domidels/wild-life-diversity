@@ -8,7 +8,11 @@ const TABLES = [
 const TAXON_ORDER = ["Birds", "Plants", "Insects", "Mammals", "Reptiles", "Amphibians", "Fungi", "Other"];
 const ZONE_LABEL = { burned: "Burned", control: "Control" };
 
-const state = { episode: null, timelineMode: "indexed", taxon: "All" };
+const state = { episode: null, timelineMode: "indexed", effortMetric: "n_observations", taxon: "All" };
+const EFFORT = {
+  n_observations: { title: "Sightings per month", unit: "sightings" },
+  n_observers: { title: "Distinct observers per month", unit: "observers" },
+};
 const data = {};
 let map, cellLayer, tileLayer;
 
@@ -47,6 +51,21 @@ async function init() {
         x.setAttribute("aria-pressed", String(x === b)));
       renderTimeline();
     }));
+
+  // Observer counts exist only in data exported after the observer_id column was added.
+  const hasObservers = data.fct_observations_monthly.some((d) => d.n_observers != null);
+  document.querySelectorAll("#effort-metric button").forEach((b) => {
+    if (b.dataset.metric === "n_observers" && !hasObservers) {
+      b.disabled = true;
+      b.title = "Available after the next data refresh";
+    }
+    b.addEventListener("click", () => {
+      state.effortMetric = b.dataset.metric;
+      document.querySelectorAll("#effort-metric button").forEach((x) =>
+        x.setAttribute("aria-pressed", String(x === b)));
+      renderTimeline();
+    });
+  });
 
   document.getElementById("taxon-filter").addEventListener("change", (e) => {
     state.taxon = e.target.value;
@@ -300,13 +319,15 @@ function renderTimeline() {
   const rows = forEpisode("fct_observations_monthly");
 
   const series = ["burned", "control"].map((zone) => {
-    const byMonth = new Map(rows.filter((d) => d.zone === zone).map((d) => [d.month, d.n_observations]));
+    const byMonth = new Map(rows.filter((d) => d.zone === zone).map((d) => [d.month, d[state.effortMetric]]));
     const values = months.map((m) => ({ month: m, raw: byMonth.get(m.toISOString().slice(0, 10)) || 0 }));
     const base = d3.mean(values.filter((v) => v.month < fs), (v) => v.raw) || 1;
     values.forEach((v) => (v.indexed = (v.raw / base) * 100));
     return { zone, values };
   });
   const key = state.timelineMode;
+  const effort = EFFORT[state.effortMetric];
+  document.getElementById("timeline-title").textContent = effort.title;
 
   const margin = { top: 12, right: 70, bottom: 26, left: 48 };
   const { svg, g, inner, width } = svgFor("chart-timeline", 260, margin);
@@ -364,7 +385,7 @@ function renderTimeline() {
       series.forEach((s, j) => dots[j].attr("cx", x(m)).attr("cy", y(s.values[i][key])).style("opacity", 1));
       showTip(event, `<div class="t-title">${fmtDate(m)}</div>` + series.map((s) =>
         tipRow(ZONE_LABEL[s.zone], key === "indexed"
-          ? `${Math.round(s.values[i].indexed)}% <span style="font-weight:400">(${fmt(s.values[i].raw)} obs.)</span>`
+          ? `${Math.round(s.values[i].indexed)}% <span style="font-weight:400">(${fmt(s.values[i].raw)} ${effort.unit})</span>`
           : fmt(s.values[i].raw), css(`--${s.zone}`))).join(""));
     })
     .on("mouseleave", () => { cross.style("opacity", 0); dots.forEach((d) => d.style("opacity", 0)); hideTip(); });

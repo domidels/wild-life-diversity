@@ -4,5 +4,7 @@ from read_files(
     '{{ var("landing_path") }}/gbif/',
     format => 'csv',
     header => true,
-    inferColumnTypes => false
+    inferColumnTypes => false,
+    -- observer_id was added later: the hint keeps the column even if older files lack it
+    schemaHints => 'observer_id string'
 )
