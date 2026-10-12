@@ -1,16 +1,15 @@
 # After the Fire — wildfires × biodiversity observations
 
-An end-to-end **Databricks + dbt** data platform combining global satellite wildfire detections
-(NASA FIRMS) with biodiversity observations (GBIF), published as an interactive dashboard.
-
-**Question:** after a major wildfire, does what naturalists observe in the burned area change —
-beyond what changed everywhere else?
+After a big wildfire, does what people observe in nature change in the burned area — more than
+everywhere else? This project answers with two open datasets: **NASA satellite fire detections**
+(where it burned) and **GBIF biodiversity observations** (which species people saw). It is built
+with **Databricks** and **dbt** and published as an interactive dashboard.
 
 **[Live dashboard →](https://domidels.github.io/wild-life-diversity/)**
 
-## Study regions and fire episodes
+## Fires studied
 
-| Region | Fire episode | Dates |
+| Region | Fire | Dates |
 |---|---|---|
 | Kangaroo Island, AU | Black Summer (Ravine fire) | Dec 2019 – Feb 2020 |
 | North Evia, GR | Evia wildfires | Aug 2021 |
@@ -19,102 +18,77 @@ beyond what changed everywhere else?
 | Landes de Gascogne, FR | La Teste-de-Buch & Landiras fires | Jul – Sep 2022 |
 | Landes de Gascogne, FR | Saumos & Biscarrosse fires (~45,000 ha) | Jul – Aug 2026 |
 
-A **region** is a bounding box ([`dbt/seeds/regions.csv`](dbt/seeds/regions.csv)); a region can
-hold several **fire episodes** ([`dbt/seeds/fire_episodes.csv`](dbt/seeds/fire_episodes.csv)).
-Episodes of one region share the map — each burned cell takes the red of its most recent fire,
-bright for the latest, dark for older ones — and each gets its own before/after analysis.
-Adding a row adds a study.
+Each fire is compared over up to 2 years after it and, usually, the 2 years before. For a recent fire, the "before"
+period keeps only the same season, so a summer is never compared with a whole year.
+To add a study, add a row to [`regions.csv`](dbt/seeds/regions.csv) and
+[`fire_episodes.csv`](dbt/seeds/fire_episodes.csv).
 
-For each episode: `before_months` before (24 by default, 60 for Gironde 2026) vs 24 months after.
-For a recent fire the "after" window stops yesterday, and "before" is restricted to the same
-season of the previous years (season matching), so that a summer is never compared with a whole year.
+## How it works
 
-## Architecture
-
-Everything runs in the cloud — no laptop involved once deployed.
+Everything runs in the cloud, once a month:
 
 ```
-                    Databricks job  (databricks.yml, monthly, serverless)
- GBIF API ────┐    ┌───────────────────────────────────────────────────────────┐
-              ├──► │ ingest_gbif / ingest_firms ──► UC volume wildfire_raw.landing│
- NASA FIRMS ──┘    │                                  │                         │
-                   │ dbt_build (SQL warehouse)        ▼                         │
-                   │   bronze  read_files() — raw CSV, untyped                  │
-                   │   silver  typed, H3-indexed, burn zones per fire episode   │
-                   │   gold    BACI, species response, taxon mix, map cells     │
-                   └───────────────────────────────────────────────────────────┘
-                                                      │
- GitHub Actions ── export_marts.py ──► web/data/*.json ──► GitHub Pages (D3 + Leaflet)
+ NASA FIRMS ─┐
+             ├─► Databricks job: download ─► dbt: clean, compare ─► GitHub: publish dashboard
+ GBIF ───────┘
 ```
 
-| GitHub workflow | Does |
-|---|---|
-| `deploy-databricks.yml` | deploys the Databricks job (bundle) on every push to `main` |
-| `deploy-pages.yml` | exports the gold tables and publishes the dashboard — on push and monthly |
-| `dbt-ci.yml` | parses the dbt project on every pull request |
+1. **Download** — a monthly Databricks job fetches new GBIF observations and NASA fire detections.
+2. **Transform** — dbt cleans the data, places it on a hexagon grid, and computes the
+   before/after comparisons, in three layers (raw → clean → results), tested at each step.
+3. **Publish** — GitHub Actions exports the results to JSON and publishes the dashboard
+   (D3 + Leaflet) on GitHub Pages.
 
 ## Method
 
-- **Spatial grid** — every observation and fire detection is indexed on an
-  [H3](https://h3geo.org/) hexagon (resolution 7, ~5 km²) with Databricks' native H3 functions.
-- **Zones** — *burned*: ≥ 2 nominal/high-confidence VIIRS detections during the fire;
-  *buffer*: 2 rings around the scar (excluded, edge effects); *disturbed*: burned by another fire
-  in the window (excluded); *control*: everything else in the region.
-- **BACI design** (Before-After-Control-Impact) —
-  `effect = (burned after / before) / (control after / before)`. Dividing by the control cancels
-  region-wide changes such as the growth of iNaturalist.
-- **Same sources before and after** — GBIF publishers upload with very different delays
-  (iNaturalist weekly, eBird yearly, some national programmes years later). Comparisons only use
-  datasets that already have records after the fire, so a late publisher cannot fake a decline.
-- **Observation effort** — counted two ways per month and zone: observations, and distinct
-  observers (GBIF `recordedBy`, hashed at ingestion so no name is stored).
-- **Rarefied richness** — species counts grow with effort, so richness is compared at equal sample
-  size (Hurlbert's expected species, `Σ 1 − (1 − nᵢ/N)ⁿ`).
-- **Species response** — change in a species' *share* of observations, burned vs control, on a
-  log2 scale with +0.5 smoothing.
+1. **Map the region in hexagons** of about 5 km² ([H3](https://h3geo.org/) grid).
+2. **Sort the hexagons**: *burned* where satellites saw the fire, *control* for unburned land
+   nearby, and a strip around the burn scar left out because it is uncertain.
+3. **Compare before and after the fire, in both zones.** The fire effect is how much the burned
+   area changed *compared with* the control:
+   `(burned after ÷ before) ÷ (control after ÷ before)`.
+   Changes that happen everywhere (more app users, a rainy year) cancel out.
+4. **Compare fairly.** The more people look, the more species they find, so species are counted
+   on samples of the same size. Only data sources that already published records after the fire
+   are used, so late uploads cannot fake a decline.
 
-**Reliability guard.** When one of the four BACI boxes has fewer than 100 observations, the
-dashboard says "too early" instead of showing an effect — the case of the 2026 French fires, whose
-burned pine forest is rarely visited and whose recent records are still reaching GBIF (eBird
-publishes yearly).
+When the burned area has too few observations (under 100), the dashboard says "too early"
+instead of showing a result — the case of the 2026 French fires.
 
-**Limits.** GBIF is presence-only, opportunistic data: results describe *observations*, not
-populations. Observer behaviour itself reacts to fire (closures, then curiosity visits).
+**Keep in mind:** these are records of what people noticed, not counts of animals and plants.
+People also avoid burned land for a while, then come back out of curiosity.
 
-## Data quality
-
-dbt tests on every layer: uniqueness and nullability of keys, accepted values, referential integrity, and
-two business rules (rarefied richness never exceeds observed richness; taxon shares sum to 100%).
+Technical details (thresholds, formulas) are documented in the dbt models.
 
 ## Run it
 
-Setup guide (French): [docs/GUIDE_DEMARRAGE.md](docs/GUIDE_DEMARRAGE.md) · How the data is presented and why: [docs/GUIDE_PRESENTATION.md](docs/GUIDE_PRESENTATION.md).
+Setup guide (French): [docs/GUIDE_DEMARRAGE.md](docs/GUIDE_DEMARRAGE.md) ·
+Why the dashboard looks the way it does: [docs/GUIDE_PRESENTATION.md](docs/GUIDE_PRESENTATION.md).
 
-**In the cloud (recommended)** — add the repository secrets `DATABRICKS_HOST`,
-`DATABRICKS_HTTP_PATH`, `DATABRICKS_TOKEN`, store the NASA key and the GBIF account in the
-Databricks secret scope `wildfire` (`firms_map_key`, `gbif_user`, `gbif_password`, `gbif_email`), and push: GitHub deploys the job, Databricks refreshes the data on the
-1st of each month, GitHub Pages republishes on the 2nd.
+**In the cloud** — add the GitHub secrets `DATABRICKS_HOST`, `DATABRICKS_HTTP_PATH`,
+`DATABRICKS_TOKEN`, and the Databricks secrets `wildfire/firms_map_key`, `wildfire/gbif_user`,
+`wildfire/gbif_password`, `wildfire/gbif_email`. Then push: the data refreshes on the 1st of
+each month and the dashboard on the 2nd.
 
-**On a laptop** (development):
+**On a laptop:**
 
 ```bash
 pip install -r requirements.txt
-python ingestion/gbif.py && python ingestion/firms.py      # 1. extract (active regions)
-python databricks/upload_to_volume.py                       # 2. load
-cd dbt && dbt deps && dbt seed && dbt build                 # 3. transform + test
-python export/export_marts.py                               # 4. publish data
-python -m http.server -d web 8000                           # 5. preview
+python ingestion/gbif.py && python ingestion/firms.py      # 1. download
+python databricks/upload_to_volume.py                       # 2. upload to Databricks
+cd dbt && dbt deps && dbt seed && dbt build                 # 3. transform and test
+python export/export_marts.py                               # 4. export results
+python -m http.server -d web 8000                           # 5. view the dashboard
 ```
 
-`web/data/` holds the latest export, so step 5 alone serves the dashboard.
+To only view the dashboard, step 5 is enough: the latest results are already in `web/data/`.
 
 ## Stack
 
-Databricks Free Edition (Unity Catalog volumes, serverless jobs, Asset Bundles, SQL warehouse, H3) · dbt-databricks · Python ·
-D3.js · Leaflet · h3-js · GitHub Actions / Pages
+Databricks Free Edition · dbt · Python · D3.js · Leaflet · GitHub Actions and Pages
 
-## Data sources & citation
+## Data sources
 
-- GBIF.org — occurrence data via the GBIF Download API. Each download has a citable DOI, logged
-  in the volume under `gbif_citations/`; cite it when publishing results.
-- NASA FIRMS — VIIRS S-NPP 375 m active fire product (standard processing), NASA LANCE/FIRMS.
+- **GBIF.org** — biodiversity observations. Each download has a DOI to cite, saved in
+  `gbif_citations/` in the Databricks volume.
+- **NASA FIRMS** — VIIRS 375 m satellite fire detections.
