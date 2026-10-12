@@ -326,7 +326,7 @@ function renderTimeline() {
 
   g.append("g").attr("class", "grid").call(d3.axisLeft(y).ticks(5).tickSize(-inner.w).tickFormat(""));
   g.append("g").attr("class", "axis").call(d3.axisLeft(y).ticks(5).tickSize(0).tickPadding(8)
-    .tickFormat(key === "indexed" ? d3.format("d") : fmtCompact));
+    .tickFormat(key === "indexed" ? (d) => `${d}%` : fmtCompact));
   g.append("g").attr("class", "axis").attr("transform", `translate(0,${inner.h})`)
     .call(width < 600
       ? d3.axisBottom(x).ticks(d3.utcYear.every(1)).tickSizeOuter(0).tickFormat(d3.utcFormat("%Y"))
@@ -334,6 +334,8 @@ function renderTimeline() {
   if (key === "indexed") {
     g.append("line").attr("x1", 0).attr("x2", inner.w).attr("y1", y(100)).attr("y2", y(100))
       .attr("stroke", "var(--axis)").attr("stroke-width", 1);
+    g.append("text").attr("x", inner.w - 4).attr("y", y(100) - 5).attr("text-anchor", "end")
+      .attr("class", "label-mid").text("100% = pre-fire average");
   }
 
   const line = d3.line().x((v) => x(v.month)).y((v) => y(v[key])).curve(d3.curveMonotoneX);
@@ -362,7 +364,7 @@ function renderTimeline() {
       series.forEach((s, j) => dots[j].attr("cx", x(m)).attr("cy", y(s.values[i][key])).style("opacity", 1));
       showTip(event, `<div class="t-title">${fmtDate(m)}</div>` + series.map((s) =>
         tipRow(ZONE_LABEL[s.zone], key === "indexed"
-          ? `${Math.round(s.values[i].indexed)} <span style="font-weight:400">(${fmt(s.values[i].raw)})</span>`
+          ? `${Math.round(s.values[i].indexed)}% <span style="font-weight:400">(${fmt(s.values[i].raw)} obs.)</span>`
           : fmt(s.values[i].raw), css(`--${s.zone}`))).join(""));
     })
     .on("mouseleave", () => { cross.style("opacity", 0); dots.forEach((d) => d.style("opacity", 0)); hideTip(); });

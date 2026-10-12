@@ -222,6 +222,22 @@ select {
 .chip { border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px; font-size: 13px; color: var(--text-secondary); }
 .chip b { color: var(--text-primary); font-weight: 600; }
 
+/* Plain-language explanation under each chart */
+.explain {
+  margin-top: 14px; padding: 12px 14px;
+  background: var(--wash); border-left: 3px solid var(--axis); border-radius: 0 8px 8px 0;
+  font-size: 14px; line-height: 1.55; color: var(--text-secondary);
+}
+.explain p { margin: 0; }
+.explain p + p { margin-top: 8px; }
+.explain strong { color: var(--text-primary); }
+.example-tag {
+  display: inline-block; margin-right: 6px; padding: 1px 7px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface);
+  font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-primary);
+}
+.method .example { margin-top: 10px; font-size: 14px; color: var(--text-secondary); }
+
 details { margin-top: 12px; font-size: 13px; }
 details summary { cursor: pointer; color: var(--text-secondary); }
 .table-wrap { overflow-x: auto; margin-top: 8px; }

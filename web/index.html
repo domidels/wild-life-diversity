@@ -41,6 +41,10 @@
         <p class="sub">H3 hexagons of ~5 km². A cell is <em>burned</em> when satellites detected fire in it; it takes the colour of its most recent fire.</p>
         <div class="legend" id="map-legend"></div>
         <div id="map" role="img" aria-label="Map of burned, control and excluded cells"></div>
+        <div class="explain">
+          <p><strong>In plain words.</strong> The region is cut into small hexagons of about 5 km², roughly 700 football pitches each. <b>Red</b> hexagons are where satellites spotted flames. <b>Blue</b> hexagons are similar land nearby that did not burn: they show what would probably have happened in the red area without the fire. <b>Grey</b> hexagons are set aside: a ring of about two hexagons around the burn scar, where it is unclear whether the land burned, or land hit by another fire. In the figures above, a <em>fire detection</em> is one hot spot seen by a satellite pass, and an <em>observation</em> is one sighting logged by a naturalist.</p>
+          <p class="example"><span class="example-tag">Example</span> A hexagon where the satellite saw flames on 20 July is red. A pine forest 20 km away that never burned is blue. If birdwatchers report fewer birds in both, the fire is not the cause; if only the red one drops, it may be.</p>
+        </div>
       </div>
     </section>
 
@@ -49,13 +53,13 @@
       <h2><span class="step">02</span>Who was looking, and when?</h2>
       <p class="section-lede">
         Before reading any biology, check the observers. Counts rise every year as apps like
-        iNaturalist grow, and burned areas are often closed for months. Indexing each zone to its own
-        pre-fire average shows whether burned and control land move together.
+        iNaturalist grow, and burned areas are often closed for months. Showing each zone as a percentage of its
+        own pre-fire monthly average (100% = a typical month before the fire) shows whether burned and control land move together.
       </p>
       <div class="card">
         <div class="controls">
           <div class="segmented" id="timeline-mode" role="group" aria-label="Scale">
-            <button type="button" data-mode="indexed" aria-pressed="true">Indexed (before = 100)</button>
+            <button type="button" data-mode="indexed" aria-pressed="true">% of pre-fire average</button>
             <button type="button" data-mode="raw" aria-pressed="false">Raw counts</button>
           </div>
         </div>
@@ -66,8 +70,16 @@
         </div>
         <h3>Observations per month</h3>
         <div class="chart" id="chart-timeline"></div>
+        <div class="explain">
+          <p><strong>In plain words.</strong> Each line counts the sightings people logged each month (one photo or one line in a checklist = one sighting, whatever the species and however many individuals). It measures how hard people were looking, not how much wildlife there is. Each zone is shown as a percentage of its own usual level before the fire, so a small zone and a large one can be compared. <b>Raw counts</b> shows the actual numbers.</p>
+          <p class="example"><span class="example-tag">Example</span> If naturalists usually log 200 sightings a month in the burned zone and only 50 in the month after the fire, the red line reads 25%. If the blue line stays near 100% at the same time, people avoided the burned area: fewer sightings there means fewer visitors, not necessarily fewer animals.</p>
+        </div>
         <h3 style="margin-top:18px">Satellite fire detections per month, whole region</h3>
         <div class="chart" id="chart-fire"></div>
+        <div class="explain">
+          <p><strong>In plain words.</strong> Each bar is the number of hot spots NASA satellites detected in the region that month. Satellites pass over several times a day and see the ground in squares of about 375 m, so a big fire produces thousands of detections. The tall bars mark the fires; the small ones are mostly farm burning or small blazes.</p>
+          <p class="example"><span class="example-tag">Example</span> A fire burning for 10 days over 100 km² can be seen in several hundred squares at each pass: that alone gives a bar of a few thousand detections for that month.</p>
+        </div>
       </div>
     </section>
 
@@ -84,14 +96,26 @@
             <h3>Species richness (rarefied)</h3>
             <p class="sub" id="rarefaction-note"></p>
             <div class="chart" id="chart-slope-richness"></div>
+            <div class="explain">
+              <p><strong>In plain words.</strong> The more you look, the more species you find, so raw species counts favour the zone with more observers. To compare fairly, we ask: if we picked the same number of sightings at random in each zone and period, how many different species would we get?</p>
+              <p class="example"><span class="example-tag">Example</span> Zone A has 5,000 sightings and 300 species; zone B has 500 sightings and 120 species. A looks far richer, but 500 sightings drawn at random from A might contain only 130 species: the two zones are in fact close.</p>
+            </div>
           </div>
           <div class="card">
             <h3>Observations</h3>
             <p class="sub">Total over each compared period</p>
             <div class="chart" id="chart-slope-obs"></div>
+            <div class="explain">
+              <p><strong>In plain words.</strong> The total number of sightings in each zone, before and after the fire. It shows how much effort sits behind the species chart on the left.</p>
+              <p class="example"><span class="example-tag">Example</span> If the burned zone falls from 3,000 to 300 sightings, a tenfold drop in visits, the species count there is based on far less looking, which is why the left chart uses equal-size samples.</p>
+            </div>
           </div>
         </div>
         <div class="card" id="verdict-card"></div>
+      </div>
+      <div class="explain">
+        <p><strong>In plain words.</strong> The verdict does not ask “did the burned area lose species?” but “did it lose <em>more</em> than the nearby unburned land?”. Things that change everywhere (weather, the popularity of nature apps, a lockdown) affect both zones; comparing the two removes them. A negative number means the burned area did worse than expected.</p>
+        <p class="example"><span class="example-tag">Example</span> The burned zone goes from 100 to 80 species (−20%) and the control from 100 to 90 (−10%). Part of the drop happened everywhere. The fire effect is 0.80 ÷ 0.90 ≈ 0.89, that is about −11%.</p>
       </div>
     </section>
 
@@ -109,6 +133,10 @@
             <select id="taxon-filter"></select>
           </div>
           <div class="chart" id="chart-species"></div>
+          <div class="explain">
+            <p><strong>In plain words.</strong> For each species, we look at its share of all sightings, before and after the fire, in the burned zone, and compare that change with the change in the unburned zone. Bars to the right: the species became relatively more common in sightings where it burned (×2 = twice as frequent compared with the control). Bars to the left: relatively less common. Only species with enough sightings are shown; hover a bar to see the counts.</p>
+            <p class="example"><span class="example-tag">Example</span> Before the fire, a woodpecker species makes up 1 sighting in 100 in the burned zone; after, 3 in 100. In the unburned zone it stays at 1 in 100. Its bar reads ×3, to the right: it is seen relatively more where the forest burned, perhaps attracted by insects in dead trees.</p>
+          </div>
           <details>
             <summary>Show as table</summary>
             <div class="table-wrap" id="table-species"></div>
@@ -118,6 +146,10 @@
           <h3>New to the region after the fire</h3>
           <p class="sub">Never recorded in the compared period before, at least 3 records after. Often pioneer plants, or simply newly-looked-for species.</p>
           <div class="chips" id="new-species"></div>
+          <div class="explain">
+            <p><strong>In plain words.</strong> Species never recorded in the whole region during the “before” period, and recorded at least 3 times after. The number is how many times. This can mean a real newcomer, or simply that someone started looking for it.</p>
+            <p class="example"><span class="example-tag">Example</span> A small plant never logged in the three years before the fire, then logged 5 times on the ash the following spring, shows up here as “· 5”.</p>
+          </div>
         </div>
       </div>
     </section>
@@ -138,6 +170,10 @@
           <span><i class="swatch dot" style="background:var(--neutral-mark)"></i>After</span>
         </div>
         <div class="chart" id="chart-mix"></div>
+        <div class="explain">
+          <p><strong>In plain words.</strong> For each group of living things, the share it represents among all sightings. The hollow circle is before the fire, the filled one after; the line between them is the change. The top line of each row is the burned zone, the bottom one the control.</p>
+          <p class="example"><span class="example-tag">Example</span> Birds go from 40% to 25% of sightings in the burned zone but stay at 40% in the control: the fire may have changed what lives, or what gets noticed, there. If birds dropped to 25% in both zones, the cause is more likely a change in observers, for example a plant-identification app becoming popular.</p>
+        </div>
       </div>
     </section>
 
@@ -150,6 +186,10 @@
       </p>
       <div class="card">
         <div class="chart" id="chart-latitude"></div>
+        <div class="explain">
+          <p><strong>In plain words.</strong> For each species, we take the average north–south position of all its sightings, before and after the fire. The dot shows how far that average moved, in km towards the north (right) or the south (left). The grey line is the margin of error: if it crosses 0 km, the move could be chance. A filled dot means the move is larger than that margin.</p>
+          <p class="example"><span class="example-tag">Example</span> A lizard was seen on average at one latitude before and 8 km further north after: its dot sits at “N 8”. That does not prove lizards moved; walkers may simply have gone to different places, for instance avoiding the burned south of the region.</p>
+        </div>
       </div>
     </section>
 
@@ -162,6 +202,8 @@
           <p>Before-After-Control-Impact. For each metric,
             <br><strong>effect = (burned after ÷ before) ÷ (control after ÷ before)</strong>.<br>
             Dividing by the control cancels changes that happened everywhere: more app users, a rainy year, a lockdown.</p>
+          <p class="example"><span class="example-tag">Example</span> Burned: 1,000 → 400 sightings (×0.4). Control: 1,000 → 800 (×0.8).
+            Effect = 0.4 ÷ 0.8 = 0.5: the burned area got half the sightings expected from the control's trend, a −50% effect.</p>
         </div>
         <div class="card">
           <h3>Limits</h3>
