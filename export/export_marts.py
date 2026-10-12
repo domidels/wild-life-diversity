@@ -47,6 +47,8 @@ def to_json(value):
 def main() -> None:
     load_dotenv(ROOT / ".env")
     OUT.mkdir(parents=True, exist_ok=True)
+    # Read every table first, write afterwards: a failure halfway leaves the old snapshot intact.
+    exported = {}
     with sql.connect(
         server_hostname=os.environ["DATABRICKS_HOST"].removeprefix("https://"),
         http_path=os.environ["DATABRICKS_HTTP_PATH"],
@@ -55,9 +57,11 @@ def main() -> None:
         for table, where in TABLES.items():
             cur.execute(f"select * from {SCHEMA}.{table}" + (f" where {where}" if where else ""))
             columns = [c[0] for c in cur.description]
-            rows = [dict(zip(columns, row)) for row in cur.fetchall()]
-            (OUT / f"{table}.json").write_text(json.dumps(rows, default=to_json, separators=(",", ":")))
-            print(f"{table:<30} {len(rows):>7,} rows")
+            exported[table] = [dict(zip(columns, row)) for row in cur.fetchall()]
+
+    for table, rows in exported.items():
+        (OUT / f"{table}.json").write_text(json.dumps(rows, default=to_json, separators=(",", ":")))
+        print(f"{table:<30} {len(rows):>7,} rows")
 
     meta = {"mode": "databricks", "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
     (OUT / "meta.json").write_text(json.dumps(meta, indent=2))

@@ -1,6 +1,7 @@
 # Publishes the dashboard to GitHub Pages.
 # If Databricks secrets are set, web/data/*.json is first refreshed from the gold tables;
-# otherwise the JSON committed in the repository is published as is.
+# otherwise, or if Databricks stays unavailable after 3 tries, the JSON committed in the
+# repository is published as is (the page still ships, with the previous data snapshot).
 # Runs on push, by hand, and monthly — the day after the Databricks job (1st, 03:00 UTC).
 # One-time setup: repo Settings > Pages > Source: "GitHub Actions".
 name: Deploy dashboard
@@ -40,9 +41,17 @@ jobs:
           python-version: "3.12"
       - name: Export gold tables from Databricks
         if: env.DATABRICKS_TOKEN != ''
+        continue-on-error: true
         run: |
           pip install "databricks-sql-connector>=3.0" "python-dotenv>=1.0"
-          python export/export_marts.py
+          # The serverless warehouse can refuse to start for a while ("Cannot create the resource").
+          for attempt in 1 2 3; do
+            python export/export_marts.py && exit 0
+            echo "::warning::Databricks export failed (attempt $attempt/3)"
+            [ "$attempt" -lt 3 ] && sleep 120
+          done
+          echo "::warning::Publishing the data snapshot committed in the repository"
+          exit 1
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:
