@@ -9,19 +9,22 @@ with **Databricks** and **dbt** and published as an interactive dashboard.
 
 ## Fires studied
 
-| Region | Fire | Dates |
-|---|---|---|
-| Kangaroo Island, AU | Black Summer (Ravine fire) | Dec 2019 – Feb 2020 |
-| North Evia, GR | Evia wildfires | Aug 2021 |
-| Pantanal, BR | Pantanal fires | Jul – Oct 2020 |
-| Northern Sierra Nevada, US | Dixie Fire | Jul – Oct 2021 |
-| Landes de Gascogne, FR | La Teste-de-Buch & Landiras fires | Jul – Sep 2022 |
-| Landes de Gascogne, FR | Saumos & Biscarrosse fires (~45,000 ha) | Jul – Aug 2026 |
+On the dashboard (regions switched on in [`regions.csv`](dbt/seeds/regions.csv)):
 
-Each fire is compared over up to 2 years after it and, usually, the 2 years before. For a recent fire, the "before"
-period keeps only the same season, so a summer is never compared with a whole year.
+| Region | Fire | Dates | Compared with |
+|---|---|---|---|
+| North Evia, GR | Evia wildfires | 3 – 20 Aug 2021 | 2 years before |
+| Landes de Gascogne (Gironde), FR | La Teste-de-Buch & Landiras fires | 12 Jul – 20 Sep 2022 | 2 years before |
+| Landes de Gascogne (Gironde), FR | Saumos & Biscarrosse fires (~45,000 ha) | 22 Jul – 1 Aug 2026 | 5 years before, same season |
+
+Defined but switched off (`is_active = false`), so not downloaded:
+Kangaroo Island, AU (Black Summer, Dec 2019 – Feb 2020), Pantanal (Mato Grosso), BR
+(Jul – Oct 2020), and Northern Sierra Nevada, US (Dixie Fire, Jul – Oct 2021).
+
+Each fire is compared over up to 2 years after it. For a recent fire, the "before" period keeps
+only the same season, so a summer is never compared with a whole year.
 To add a study, add a row to [`regions.csv`](dbt/seeds/regions.csv) and
-[`fire_episodes.csv`](dbt/seeds/fire_episodes.csv).
+[`fire_episodes.csv`](dbt/seeds/fire_episodes.csv); to switch a region on, set its `is_active` to `true`.
 
 ## How it works
 
