@@ -1,7 +1,7 @@
 # After the Fire — wildfires × biodiversity observations
 
-After a big wildfire, does what people observe in nature change in the burned area — more than
-everywhere else? This project answers with two open datasets: **NASA satellite fire detections**
+After a big wildfire, do people see different wildlife in the burned area, and does that change
+more there than everywhere else? This project answers with two open datasets: **NASA satellite fire detections**
 (where it burned) and **GBIF biodiversity observations** (which species people saw). It is built
 with **Databricks** and **dbt** and published as an interactive dashboard.
 
