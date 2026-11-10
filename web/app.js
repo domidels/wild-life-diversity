@@ -26,6 +26,7 @@ const css = (name) => getComputedStyle(document.documentElement).getPropertyValu
 /* ---------------------------------------------------------------- bootstrap */
 
 async function init() {
+  setupExplanations();
   const [meta, ...tables] = await Promise.all([
     fetch("data/meta.json").then((r) => r.json()),
     ...TABLES.map((t) => fetch(`data/${t}.json`).then((r) => r.json())),
@@ -277,6 +278,40 @@ function renderMap() {
     cellLayer.addLayer(poly);
   }
   map.fitBounds([[r.min_lat, r.min_lon], [r.max_lat, r.max_lon]]);
+}
+
+/* ---------------------------------------------------------------- explanations on hover */
+
+// Each .explained block holds a chart and its .explain text, shown on hover by style.css.
+// Here: keyboard access, Escape to close, and placement (above when there is no room below).
+function setupExplanations() {
+  document.querySelectorAll(".explained").forEach((el, i) => {
+    const explain = el.querySelector(":scope > .explain");
+    explain.id = explain.id || `explain-${i}`;
+    explain.setAttribute("role", "tooltip");
+    el.tabIndex = 0;
+    el.setAttribute("aria-describedby", explain.id);
+    const place = () => {
+      const r = el.getBoundingClientRect();
+      const top = document.querySelector(".toolbar").getBoundingClientRect().bottom;  // sticky
+      const below = window.innerHeight - r.bottom - 12;
+      const above = r.top - top - 12;
+      explain.style.maxHeight = "";
+      const up = explain.offsetHeight > below && above > below;
+      el.classList.toggle("explain-up", up);
+      // neither side has room: cap the height, the text scrolls inside
+      if (explain.offsetHeight > (up ? above : below)) explain.style.maxHeight = `${Math.max(up ? above : below, 120)}px`;
+      el.classList.toggle("explain-end", r.left + explain.offsetWidth > document.documentElement.clientWidth - 16);
+    };
+    el.addEventListener("mouseenter", place);
+    el.addEventListener("focusin", place);
+    el.addEventListener("mouseleave", () => el.classList.remove("explain-dismissed"));
+    el.addEventListener("focusout", () => el.classList.remove("explain-dismissed"));
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll(".explained:is(:hover, :focus-within)").forEach((el) => el.classList.add("explain-dismissed"));
+  });
 }
 
 /* ---------------------------------------------------------------- shared chart helpers */

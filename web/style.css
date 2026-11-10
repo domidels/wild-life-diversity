@@ -229,6 +229,38 @@ select {
   background: var(--wash); border-left: 3px solid var(--axis); border-radius: 0 8px 8px 0;
   font-size: 14px; line-height: 1.55; color: var(--text-secondary);
 }
+/* With a mouse, the explanation floats over the page while the pointer is on the part it
+   explains (or keyboard focus is in it); touch screens keep it inline, as above. */
+@media (hover: hover) and (pointer: fine) {
+  .explained { position: relative; }
+  .explained:focus-visible { outline: 2px solid var(--axis); outline-offset: 4px; border-radius: 8px; }
+  .explained::after {
+    content: "?"; position: absolute; top: 6px; right: 6px; z-index: 500;
+    width: 18px; height: 18px; border-radius: 50%; pointer-events: none;
+    display: grid; place-items: center; font-size: 11px; font-weight: 700;
+    color: var(--text-muted); border: 1px solid var(--border); background: var(--surface);
+  }
+  .explained > .explain {
+    position: absolute; left: 0; right: 0; top: 100%; z-index: 900;  /* under the sticky toolbar */
+    min-width: min(420px, 90vw); margin-top: 0; overflow-y: auto;
+    /* opaque: --wash is translucent */
+    background: linear-gradient(var(--wash), var(--wash)), var(--surface);
+    border: 1px solid var(--border); border-left: 3px solid var(--axis);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .14);
+    opacity: 0; visibility: hidden; transform: translateY(-4px);
+    /* a short delay on the way in: sweeping the pointer across the page opens nothing */
+    transition: opacity .15s, transform .15s, visibility 0s linear .15s;
+  }
+  .explained.explain-up > .explain { top: auto; bottom: 100%; transform: translateY(4px); }
+  .explained.explain-end > .explain { left: auto; }  /* a narrow card near the right edge */
+  .explained:is(:hover, :focus-within):not(.explain-dismissed) > .explain {
+    opacity: 1; visibility: visible; transform: none;
+    transition: opacity .15s .25s, transform .15s .25s, visibility 0s .25s;
+  }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: reduce) {
+  .explained > .explain, .explained.explain-up > .explain { transform: none; }
+}
 .explain p { margin: 0; }
 .explain p + p { margin-top: 8px; }
 .explain strong { color: var(--text-primary); }
