@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="wrap">
+  <div class="hero-band"><div class="wrap">
     <header class="hero">
       <p class="eyebrow">GBIF × NASA FIRMS · Databricks · dbt</p>
       <h1>After the fire: what changed in what people observe?</h1>
@@ -19,7 +19,7 @@
         nearby unburned land to separate the effect of fire from everything else.
       </p>
     </header>
-  </div>
+  </div></div>
 
   <nav class="toolbar" aria-label="Region">
     <div class="wrap">
@@ -155,6 +155,10 @@
             <label for="taxon-filter">Group</label>
             <select id="taxon-filter"></select>
           </div>
+          <div class="legend">
+            <span><i class="swatch" style="background:var(--gain)"></i>Seen relatively more where it burned</span>
+            <span><i class="swatch" style="background:var(--loss)"></i>Seen relatively less</span>
+          </div>
           <div class="explained">
             <div class="chart" id="chart-species"></div>
             <div class="explain">
@@ -213,7 +217,11 @@
       </p>
       <div class="card">
         <div class="explained">
-          <div class="chart" id="chart-latitude"></div>
+          <div class="legend">
+          <span><i class="swatch dot" style="background:var(--highlight)"></i>Shift larger than its margin of error</span>
+          <span><i class="swatch ring"></i>Within the margin: could be chance</span>
+        </div>
+        <div class="chart" id="chart-latitude"></div>
           <div class="explain">
             <p><strong>In plain words.</strong> For each species, we take the average north–south position of all its sightings, before and after the fire. The dot shows how far that average moved, in km towards the north (right) or the south (left). The grey line is the margin of error: if it crosses 0 km, the move could be chance. A filled dot means the move is larger than that margin.</p>
             <p class="example"><span class="example-tag">Example</span> A lizard was seen on average at one latitude before and 8 km further north after: its dot sits at “N 8”. That does not prove lizards moved; walkers may simply have gone to different places, for instance avoiding the burned south of the region.</p>
@@ -247,7 +255,7 @@
           <h3>Pipeline</h3>
           <ol class="pipeline">
             <li>A monthly Databricks job pulls GBIF occurrences and NASA FIRMS detections into a Unity Catalog volume.</li>
-            <li>dbt builds bronze → silver → gold tables: H3 grid, burn zones per fire, BACI, rarefaction — tested at every layer.</li>
+            <li>dbt builds <span class="layer bronze">bronze</span> → <span class="layer silver">silver</span> → <span class="layer gold">gold</span> tables: H3 grid, burn zones per fire, BACI, rarefaction — tested at every layer.</li>
             <li>GitHub Actions exports the gold tables to JSON and publishes this page.</li>
           </ol>
         </div>

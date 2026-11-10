@@ -216,13 +216,13 @@ function renderHeader() {
     `Fire from ${d3.utcFormat("%-d %B %Y")(fs)} to ${d3.utcFormat("%-d %B %Y")(fe)}. ` + periodSentence(r);
 
   const kpis = [
-    { label: "Burned area", value: `${fmt(r.burned_area_km2)} km²`, note: `${fmt(r.n_burned_cells)} hexagons` },
-    { label: "Fire detections", value: fmtCompact(r.n_fire_detections), note: "VIIRS, during the event" },
-    { label: "Observations", value: fmtCompact(r.n_observations), note: `from ${r.n_datasets} datasets` },
-    { label: "Species observed", value: fmt(r.n_species), note: "over the study window" },
+    { kind: "fire", label: "Burned area", value: `${fmt(r.burned_area_km2)} km²`, note: `${fmt(r.n_burned_cells)} hexagons` },
+    { kind: "fire", label: "Fire detections", value: fmtCompact(r.n_fire_detections), note: "VIIRS, during the event" },
+    { kind: "life", label: "Observations", value: fmtCompact(r.n_observations), note: `from ${r.n_datasets} datasets` },
+    { kind: "life", label: "Species observed", value: fmt(r.n_species), note: "over the study window" },
   ];
   document.getElementById("kpis").innerHTML = kpis.map((k) =>
-    `<div class="kpi"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="note">${k.note}</div></div>`
+    `<div class="kpi ${k.kind}"><div class="label">${k.label}</div><div class="value">${k.value}</div><div class="note">${k.note}</div></div>`
   ).join("");
 }
 
@@ -467,6 +467,7 @@ function renderVerdict() {
 
   const rich = effect("rarefied_richness");
   const card = document.getElementById("verdict-card");
+  card.classList.remove("up", "down");
   if (!rich || rich.baci_effect_pct == null) {
     card.innerHTML = `<h3>BACI effect</h3><p class="empty">Not enough observations in one of the four boxes.</p>`;
     return;
@@ -482,6 +483,7 @@ function renderVerdict() {
   }
   const v = rich.baci_effect_pct;
   const cls = v <= -5 ? "down" : v >= 5 ? "up" : "";
+  if (cls) card.classList.add(cls);
   const sentence = Math.abs(v) < 5
     ? "The burned area kept pace with the control: no clear change in species richness."
     : v < 0
@@ -585,7 +587,7 @@ function renderSpecies() {
     const barH = Math.min(14, y.bandwidth());
     g.selectAll("path.bar").data(rows).join("path").attr("class", "bar")
       .attr("d", (d) => roundedEnd(x(0), x(d.baci_log2), y(d.species_key) + (y.bandwidth() - barH) / 2, barH))
-      .attr("fill", (d) => (d.baci_log2 > 0 ? "var(--neutral-mark)" : "var(--neutral-mark-2)"));
+      .attr("fill", (d) => (d.baci_log2 > 0 ? "var(--gain)" : "var(--loss)"));
     g.selectAll("text.name").data(rows).join("text").attr("class", "name label-mid")
       .attr("x", -10).attr("y", (d) => y(d.species_key) + y.bandwidth() / 2 + 4).attr("text-anchor", "end")
       .style("font-style", (d) => (d.species_name.startsWith("Demo") ? "normal" : "italic"))
@@ -704,7 +706,7 @@ function renderLatitude() {
     .attr("y1", cy).attr("y2", cy).attr("stroke", "var(--neutral-mark-2)").attr("stroke-width", 2).attr("stroke-linecap", "round");
   g.selectAll("circle.dot").data(shown).join("circle").attr("class", "dot")
     .attr("cx", (d) => x(d.shift_km)).attr("cy", cy).attr("r", 5)
-    .attr("fill", (d) => (d.is_notable ? "var(--neutral-mark)" : "var(--surface)"))
+    .attr("fill", (d) => (d.is_notable ? "var(--highlight)" : "var(--surface)"))
     .attr("stroke", (d) => (d.is_notable ? "var(--surface)" : "var(--neutral-mark)")).attr("stroke-width", 2);
   g.selectAll("text.name").data(shown).join("text").attr("class", "name label-mid")
     .attr("x", -10).attr("y", (d) => cy(d) + 4).attr("text-anchor", "end")
