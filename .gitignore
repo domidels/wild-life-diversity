@@ -16,6 +16,7 @@ dbt/profiles.yml
 
 # ---------------------------------------------------------------- Python
 __pycache__/
+.pytest_cache/
 *.py[cod]
 .venv/
 venv/

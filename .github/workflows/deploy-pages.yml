@@ -2,6 +2,8 @@
 # If Databricks secrets are set, web/data/*.json is first refreshed from the gold tables;
 # otherwise, or if Databricks stays unavailable after 3 tries, the JSON committed in the
 # repository is published as is (the page still ships, with the previous data snapshot).
+# Before publishing, a headless browser checks that the page loads that data without error
+# (tests/dashboard); if it does not, nothing is published and the live site stays as it was.
 # Runs on push, by hand, and monthly — the day after the Databricks job (1st, 03:00 UTC).
 # One-time setup: repo Settings > Pages > Source: "GitHub Actions".
 name: Deploy dashboard
@@ -9,7 +11,7 @@ name: Deploy dashboard
 on:
   push:
     branches: [main]
-    paths: ["web/**", "export/**", ".github/workflows/deploy-pages.yml"]
+    paths: ["web/**", "export/**", "tests/dashboard/**", ".github/workflows/deploy-pages.yml"]
   schedule:
     - cron: "0 6 2 * *"
   workflow_dispatch:
@@ -36,7 +38,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
-        if: env.DATABRICKS_TOKEN != ''
         with:
           python-version: "3.12"
       - name: Export gold tables from Databricks
@@ -52,6 +53,11 @@ jobs:
           done
           echo "::warning::Publishing the data snapshot committed in the repository"
           exit 1
+      - name: Smoke-test the dashboard on the data about to be published
+        run: |
+          pip install "pytest>=8.0" "playwright>=1.45"
+          playwright install --with-deps chromium
+          pytest tests/dashboard -v
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5
         with:

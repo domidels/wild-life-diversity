@@ -1,14 +1,22 @@
-# Checks that the dbt project parses (no Databricks connection needed).
-name: dbt parse
+# Tests, on every pull request and every push to main. A green run on main deploys the
+# Databricks pipeline (deploy-databricks.yml).
+#   dbt-parse    the dbt project compiles (no Databricks connection needed)
+#   dashboard    the dashboard loads the committed web/data snapshot without error
+#   integration  the whole pipeline on a known scenario: tests/integration/scenario.py CSVs
+#                -> CI volume -> dbt build (schemas wildfire_ci_*) -> gold numbers checked
+#                -> export to JSON -> dashboard smoke test on that export
+# The integration job needs the repository secrets DATABRICKS_HOST, DATABRICKS_HTTP_PATH and
+# DATABRICKS_TOKEN; without them (pull requests from forks) it is skipped with a warning.
+name: CI
 
 on:
   pull_request:
   push:
     branches: [main]
-    paths: ["dbt/**"]
+  workflow_dispatch:
 
 jobs:
-  parse:
+  dbt-parse:
     runs-on: ubuntu-latest
     env:
       DATABRICKS_HOST: ci.cloud.databricks.com
@@ -25,3 +33,81 @@ jobs:
           cp profiles.example.yml profiles.yml
           dbt deps --profiles-dir .
           dbt parse --profiles-dir .
+
+  dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - run: |
+          pip install "pytest>=8.0" "playwright>=1.45"
+          playwright install --with-deps chromium
+      - run: pytest tests/dashboard -v
+
+  integration:
+    needs: dbt-parse
+    runs-on: ubuntu-latest
+    # one run at a time: every run rebuilds the same wildfire_ci_* schemas
+    concurrency:
+      group: databricks-ci
+      cancel-in-progress: false
+    env:
+      DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+      DATABRICKS_HTTP_PATH: ${{ secrets.DATABRICKS_HTTP_PATH }}
+      DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+      CI_VOLUME: /Volumes/workspace/wildfire_ci_raw/landing
+      CI_GOLD_SCHEMA: workspace.wildfire_ci_gold
+    steps:
+      - if: env.DATABRICKS_TOKEN == ''
+        run: echo "::warning::Databricks secrets not available, integration tests skipped"
+      - uses: actions/checkout@v7
+        if: env.DATABRICKS_TOKEN != ''
+      - uses: actions/setup-python@v7
+        if: env.DATABRICKS_TOKEN != ''
+        with:
+          python-version: "3.12"
+      - name: Install
+        if: env.DATABRICKS_TOKEN != ''
+        run: |
+          pip install -r requirements-dev.txt
+          playwright install --with-deps chromium
+      - name: Wake up the SQL warehouse
+        if: env.DATABRICKS_TOKEN != ''
+        # The serverless warehouse can refuse to start for a while ("Cannot create the resource").
+        run: |
+          for attempt in 1 2 3; do
+            python -c "
+          import os; from databricks import sql
+          with sql.connect(server_hostname=os.environ['DATABRICKS_HOST'].removeprefix('https://'),
+                           http_path=os.environ['DATABRICKS_HTTP_PATH'],
+                           access_token=os.environ['DATABRICKS_TOKEN']) as c, c.cursor() as cur:
+              cur.execute('select 1')" && exit 0
+            echo "::warning::SQL warehouse not available (attempt $attempt/3)"
+            [ "$attempt" -lt 3 ] && sleep 120
+          done
+          exit 1
+      - name: Upload the scenario to the CI volume
+        if: env.DATABRICKS_TOKEN != ''
+        run: |
+          python tests/integration/scenario.py --out "$RUNNER_TEMP/landing"
+          python databricks/upload_to_volume.py --source "$RUNNER_TEMP/landing" --volume "$CI_VOLUME" --force --clean
+      - name: dbt build (models and data tests)
+        if: env.DATABRICKS_TOKEN != ''
+        working-directory: dbt
+        run: |
+          cp profiles.example.yml profiles.yml
+          dbt deps --profiles-dir .
+          dbt build --profiles-dir . --target ci --vars "{landing_path: $CI_VOLUME}"
+      - name: Check the gold numbers
+        if: env.DATABRICKS_TOKEN != ''
+        run: pytest tests/integration -v
+      - name: Export the gold tables and test the dashboard on them
+        if: env.DATABRICKS_TOKEN != ''
+        run: |
+          mkdir -p "$RUNNER_TEMP/site"
+          cp -r web/. "$RUNNER_TEMP/site"
+          rm -rf "$RUNNER_TEMP/site/data"
+          python export/export_gold.py --schema "$CI_GOLD_SCHEMA" --out "$RUNNER_TEMP/site/data"
+          DASHBOARD_DIR="$RUNNER_TEMP/site" pytest tests/dashboard -v

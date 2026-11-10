@@ -5,10 +5,12 @@ a public portfolio expose a warehouse token. So we snapshot the small gold table
 
 Usage:
     python export/export_gold.py            # reads DATABRICKS_* from .env
+    python export/export_gold.py --schema workspace.wildfire_ci_gold --out /tmp/site/data   # CI
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 from datetime import date, datetime, timezone
@@ -45,8 +47,12 @@ def to_json(value):
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--schema", default=SCHEMA, help="catalog.schema holding the gold tables")
+    parser.add_argument("--out", type=Path, default=OUT, help="folder the JSON files are written to")
+    args = parser.parse_args()
     load_dotenv(ROOT / ".env")
-    OUT.mkdir(parents=True, exist_ok=True)
+    args.out.mkdir(parents=True, exist_ok=True)
     # Read every table first, write afterwards: a failure halfway leaves the old snapshot intact.
     exported = {}
     with sql.connect(
@@ -55,16 +61,16 @@ def main() -> None:
         access_token=os.environ["DATABRICKS_TOKEN"],
     ) as conn, conn.cursor() as cur:
         for table, where in TABLES.items():
-            cur.execute(f"select * from {SCHEMA}.{table}" + (f" where {where}" if where else ""))
+            cur.execute(f"select * from {args.schema}.{table}" + (f" where {where}" if where else ""))
             columns = [c[0] for c in cur.description]
             exported[table] = [dict(zip(columns, row)) for row in cur.fetchall()]
 
     for table, rows in exported.items():
-        (OUT / f"{table}.json").write_text(json.dumps(rows, default=to_json, separators=(",", ":")))
+        (args.out / f"{table}.json").write_text(json.dumps(rows, default=to_json, separators=(",", ":")))
         print(f"{table:<30} {len(rows):>7,} rows")
 
     meta = {"mode": "databricks", "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds")}
-    (OUT / "meta.json").write_text(json.dumps(meta, indent=2))
+    (args.out / "meta.json").write_text(json.dumps(meta, indent=2))
 
 
 if __name__ == "__main__":

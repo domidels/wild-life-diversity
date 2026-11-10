@@ -155,9 +155,10 @@ Une fois en place, plus rien ne tourne en local :
 
 | Quand | Où | Quoi |
 |---|---|---|
-| à chaque push sur `main` | GitHub Actions | déploie le job Databricks décrit dans [`databricks.yml`](../databricks.yml) |
+| à chaque PR et push sur `main` | GitHub Actions | lance les tests (voir ci-dessous) |
+| après des tests verts sur `main` | GitHub Actions | déploie le job Databricks décrit dans [`databricks.yml`](../databricks.yml) |
 | le 1er du mois, 3 h UTC | Databricks (serverless) | télécharge GBIF + FIRMS **directement dans le volume**, puis `dbt build` |
-| le 2 du mois, 6 h UTC | GitHub Actions | exporte les tables gold en JSON et republie le dashboard sur GitHub Pages |
+| le 2 du mois, 6 h UTC | GitHub Actions | exporte les tables gold en JSON, vérifie le dashboard dans un navigateur, puis le republie sur GitHub Pages |
 
 **Mise en place (une seule fois) :**
 
@@ -176,6 +177,33 @@ les régions actives sont téléchargées (une nouvelle région = plusieurs heur
 **À surveiller** : le token Databricks expire (90 jours) — pense à le renouveler dans `.env` et
 dans les secrets GitHub. Chaque mois, le job re-télécharge les 3 derniers mois, car GBIF et FIRMS
 continuent de les compléter.
+
+### Les tests (CI)
+
+Le workflow [`ci.yml`](../.github/workflows/ci.yml) tourne sur chaque pull request et chaque push :
+
+- **dbt parse** : le projet dbt compile ;
+- **dashboard** : un navigateur headless ouvre `web/` sur les JSON commités et vérifie qu'il n'y a
+  pas d'erreur JavaScript et que la carte et les graphiques s'affichent ([`tests/dashboard/`](../tests/dashboard)) ;
+- **intégration** : le pipeline entier sur un scénario connu. [`tests/integration/scenario.py`](../tests/integration/scenario.py)
+  génère un feu fictif à Evia dont on connaît le résultat (la zone brûlée perd la moitié de ses
+  observations et de ses espèces, le témoin ne bouge pas : effet BACI = 0,5), plus des données
+  pièges que le pipeline doit écarter (spécimens de musée, doublons, coordonnées imprécises, dataset
+  qui ne publie plus, autre feu...). Les CSV vont dans un volume séparé, `dbt build` construit des
+  schémas séparés `wildfire_ci_*` (target `ci` de `profiles.yml`), puis pytest vérifie les chiffres
+  gold, et le dashboard est testé sur leur export.
+
+En local, avec `.env` rempli :
+
+```bash
+pip install -r requirements-dev.txt && playwright install chromium
+python tests/integration/scenario.py --out /tmp/landing
+python databricks/upload_to_volume.py --source /tmp/landing --volume /Volumes/workspace/wildfire_ci_raw/landing --force --clean
+cd dbt && dbt build --profiles-dir . --target ci --vars "{landing_path: /Volumes/workspace/wildfire_ci_raw/landing}" && cd ..
+pytest tests/integration tests/dashboard
+```
+
+Sans les secrets GitHub (PR depuis un fork), le job d'intégration est sauté avec un avertissement.
 
 ---
 

@@ -44,6 +44,12 @@ Everything runs in the cloud, once a month:
 3. **Publish** — GitHub Actions exports the results to JSON and publishes the dashboard
    (D3 + Leaflet) on GitHub Pages.
 
+**Tests** — every pull request runs the whole pipeline on a synthetic fire whose answer is known
+in advance ([`scenario.py`](tests/integration/scenario.py): the BACI effect must come out at
+exactly 0.5, with decoy records the pipeline must drop), in separate `wildfire_ci_*` schemas,
+then checks the dashboard in a headless browser. The Databricks job is deployed only when they
+pass, and the dashboard is published only if it loads its data without error.
+
 ## Method
 
 1. **Map the region in hexagons** of about 5 km² ([H3](https://h3geo.org/) grid).
@@ -86,11 +92,14 @@ python export/export_gold.py                               # 4. export results
 python -m http.server -d web 8000                           # 5. view the dashboard
 ```
 
+Tests: `pip install -r requirements-dev.txt`, then see
+[the guide](docs/GUIDE_DEMARRAGE.md#les-tests-ci).
+
 To only view the dashboard, step 5 is enough: the latest results are already in `web/data/`.
 
 ## Stack
 
-Databricks Free Edition · dbt · Python · D3.js · Leaflet · GitHub Actions and Pages
+Databricks Free Edition · dbt · Python · pytest · Playwright · D3.js · Leaflet · GitHub Actions and Pages
 
 ## Data sources
 
