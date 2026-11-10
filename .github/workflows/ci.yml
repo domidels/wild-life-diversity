@@ -7,6 +7,9 @@
 #                -> export to JSON -> dashboard smoke test on that export
 # The integration job needs the repository secrets DATABRICKS_HOST, DATABRICKS_HTTP_PATH and
 # DATABRICKS_TOKEN; without them (pull requests from forks) it is skipped with a warning.
+# Databricks Free Edition sometimes has no serverless capacity for hours ("Cannot create the
+# resource"): the job then waits ~25 minutes and, if the warehouse still does not start, skips the
+# Databricks steps with a warning instead of failing. Real dbt or test errors still fail the run.
 name: CI
 
 on:
@@ -75,36 +78,49 @@ jobs:
           playwright install --with-deps chromium
       - name: Wake up the SQL warehouse
         if: env.DATABRICKS_TOKEN != ''
-        # The serverless warehouse can refuse to start for a while ("Cannot create the resource").
         run: |
-          for attempt in 1 2 3; do
-            python -c "
+          for attempt in 1 2 3 4 5 6; do
+            if python -c "
           import os; from databricks import sql
           with sql.connect(server_hostname=os.environ['DATABRICKS_HOST'].removeprefix('https://'),
                            http_path=os.environ['DATABRICKS_HTTP_PATH'],
                            access_token=os.environ['DATABRICKS_TOKEN']) as c, c.cursor() as cur:
-              cur.execute('select 1')" && exit 0
-            echo "::warning::SQL warehouse not available (attempt $attempt/3)"
-            [ "$attempt" -lt 3 ] && sleep 120
+              cur.execute('select 1')" 2> warehouse.log; then
+              echo "WAREHOUSE=up" >> "$GITHUB_ENV"
+              exit 0
+            fi
+            # only a lack of capacity is waited out; a bad token or HTTP path fails right away
+            if ! grep -qE "Cannot create the resource|RESOURCE_EXHAUSTED" warehouse.log; then
+              cat warehouse.log
+              exit 1
+            fi
+            echo "SQL warehouse not available (attempt $attempt/6): Databricks has no serverless capacity"
+            [ "$attempt" -lt 6 ] && sleep 300
           done
-          exit 1
+          echo "::warning title=Integration tests skipped::Databricks has no serverless capacity right now (Cannot create the resource). Re-run this job later to run them."
+          {
+            echo "### ⚠️ Integration tests skipped"
+            echo "The Databricks SQL warehouse did not start after 6 attempts over ~25 minutes"
+            echo "(Free Edition capacity: \`Cannot create the resource\`). Nothing was tested against Databricks."
+            echo "Re-run this job once Databricks is available."
+          } >> "$GITHUB_STEP_SUMMARY"
       - name: Upload the scenario to the CI volume
-        if: env.DATABRICKS_TOKEN != ''
+        if: env.WAREHOUSE == 'up'
         run: |
           python tests/integration/scenario.py --out "$RUNNER_TEMP/landing"
           python databricks/upload_to_volume.py --source "$RUNNER_TEMP/landing" --volume "$CI_VOLUME" --force --clean
       - name: dbt build (models and data tests)
-        if: env.DATABRICKS_TOKEN != ''
+        if: env.WAREHOUSE == 'up'
         working-directory: dbt
         run: |
           cp profiles.example.yml profiles.yml
           dbt deps --profiles-dir .
           dbt build --profiles-dir . --target ci --vars "{landing_path: $CI_VOLUME}"
       - name: Check the gold numbers
-        if: env.DATABRICKS_TOKEN != ''
+        if: env.WAREHOUSE == 'up'
         run: pytest tests/integration -v
       - name: Export the gold tables and test the dashboard on them
-        if: env.DATABRICKS_TOKEN != ''
+        if: env.WAREHOUSE == 'up'
         run: |
           mkdir -p "$RUNNER_TEMP/site"
           cp -r web/. "$RUNNER_TEMP/site"

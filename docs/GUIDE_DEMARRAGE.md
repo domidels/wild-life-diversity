@@ -204,6 +204,10 @@ pytest tests/integration tests/dashboard
 ```
 
 Sans les secrets GitHub (PR depuis un fork), le job d'intégration est sauté avec un avertissement.
+Si Databricks Free Edition n'a pas de capacité serverless (`Cannot create the resource`, parfois
+pendant des heures), le job réessaie pendant ~25 minutes puis saute les étapes Databricks avec un
+avertissement dans le résumé du run, au lieu d'échouer : relance-le plus tard pour vraiment tester.
+Une autre erreur de connexion (token expiré, mauvais `DATABRICKS_HTTP_PATH`) fait échouer le job.
 
 ---
 
