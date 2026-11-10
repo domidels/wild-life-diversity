@@ -54,6 +54,7 @@ select
     episode_id,
     species_key,
     species_name,
+    n.common_name,
     taxon_group,
     n_burned_before, n_burned_after, n_control_before, n_control_after,
     n_region_before, n_region_after,
@@ -71,4 +72,5 @@ select
         else 'stable'
     end                                                   as response
 from scored
+left join {{ ref('stg_gbif__species_names') }} as n using (species_key)
 where n_region_before + n_region_after >= 3

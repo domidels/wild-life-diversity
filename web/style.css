@@ -342,6 +342,7 @@ th { color: var(--text-secondary); font-weight: 600; }
   opacity: 0; transition: opacity .08s;
 }
 .tooltip .t-title { font-weight: 600; margin-bottom: 4px; }
+.tooltip .t-sub { margin: -2px 0 6px; font-style: italic; color: var(--text-muted); }
 .tooltip .t-row { display: flex; justify-content: space-between; gap: 16px; color: var(--text-secondary); }
 .tooltip .t-row b { color: var(--text-primary); font-variant-numeric: tabular-nums; font-weight: 600; }
 .tooltip .key { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }

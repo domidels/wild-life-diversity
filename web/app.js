@@ -590,8 +590,8 @@ function renderSpecies() {
       .attr("fill", (d) => (d.baci_log2 > 0 ? "var(--gain)" : "var(--loss)"));
     g.selectAll("text.name").data(rows).join("text").attr("class", "name label-mid")
       .attr("x", -10).attr("y", (d) => y(d.species_key) + y.bandwidth() / 2 + 4).attr("text-anchor", "end")
-      .style("font-style", (d) => (d.species_name.startsWith("Demo") ? "normal" : "italic"))
-      .text((d) => truncate(d.species_name, narrow ? 18 : 28));
+      .style("font-style", nameStyle)
+      .text((d) => truncate(commonName(d), narrow ? 18 : 28));
     g.selectAll("rect.hit").data(rows).join("rect").attr("class", "hit")
       .attr("x", -margin.left).attr("width", inner.w + margin.left).attr("y", (d) => y(d.species_key) - 3)
       .attr("height", rowH).attr("fill", "transparent")
@@ -600,14 +600,14 @@ function renderSpecies() {
   }
 
   document.getElementById("table-species").innerHTML = table(
-    ["Species", "Group", "Burned before", "Burned after", "Control before", "Control after", "Relative change"],
-    d3.sort(scored, (d) => -d.baci_log2).map((d) => [d.species_name, d.taxon_group, fmt(d.n_burned_before),
+    ["Species", "Scientific name", "Group", "Burned before", "Burned after", "Control before", "Control after", "Relative change"],
+    d3.sort(scored, (d) => -d.baci_log2).map((d) => [d.common_name || "—", `<i>${d.species_name}</i>`, d.taxon_group, fmt(d.n_burned_before),
       fmt(d.n_burned_after), fmt(d.n_control_before), fmt(d.n_control_after), ratioLabel(d.baci_log2)]));
 
   const fresh = d3.sort(all.filter((d) => d.response === "new_in_region"
     && (state.taxon === "All" || d.taxon_group === state.taxon)), (d) => -d.n_region_after);
   document.getElementById("new-species").innerHTML = fresh.length
-    ? fresh.slice(0, 30).map((d) => `<span class="chip">${d.species_name} · <b>${d.n_region_after}</b></span>`).join("")
+    ? fresh.slice(0, 30).map((d) => `<span class="chip" title="${d.species_name}">${nameHtml(d)} · <b>${d.n_region_after}</b></span>`).join("")
     : `<p class="empty">None in this group.</p>`;
 }
 
@@ -617,8 +617,15 @@ const ratioLabel = (log2) => {
 };
 const truncate = (s, n) => (s.length > n ? s.slice(0, n - 1) + "…" : s);
 
+// English common name when GBIF has one; otherwise the scientific name, in italics as usual.
+const commonName = (d) => d.common_name || d.species_name;
+const nameStyle = (d) => (d.common_name || d.species_name.startsWith("Demo") ? "normal" : "italic");
+const nameHtml = (d) => (nameStyle(d) === "italic" ? `<i>${d.species_name}</i>` : commonName(d));
+const nameTitle = (d) => `<div class="t-title">${nameHtml(d)}</div>` +
+  (d.common_name ? `<div class="t-sub">${d.species_name}</div>` : "");
+
 function speciesTip(d) {
-  return `<div class="t-title">${d.species_name}</div>` +
+  return nameTitle(d) +
     tipRow("Group", d.taxon_group) +
     tipRow("Burned: before → after", `${fmt(d.n_burned_before)} → ${fmt(d.n_burned_after)}`, css("--burned")) +
     tipRow("Control: before → after", `${fmt(d.n_control_before)} → ${fmt(d.n_control_after)}`, css("--control")) +
@@ -710,12 +717,12 @@ function renderLatitude() {
     .attr("stroke", (d) => (d.is_notable ? "var(--surface)" : "var(--neutral-mark)")).attr("stroke-width", 2);
   g.selectAll("text.name").data(shown).join("text").attr("class", "name label-mid")
     .attr("x", -10).attr("y", (d) => cy(d) + 4).attr("text-anchor", "end")
-    .style("font-style", (d) => (d.species_name.startsWith("Demo") ? "normal" : "italic"))
-    .text((d) => truncate(d.species_name, narrow ? 18 : 28));
+    .style("font-style", nameStyle)
+    .text((d) => truncate(commonName(d), narrow ? 18 : 28));
   g.selectAll("rect.hit").data(shown).join("rect").attr("class", "hit")
     .attr("x", -margin.left).attr("width", inner.w + margin.left).attr("y", (d) => y(d.species_key)).attr("height", rowH)
     .attr("fill", "transparent")
-    .on("mousemove", (event, d) => showTip(event, `<div class="t-title">${d.species_name}</div>` +
+    .on("mousemove", (event, d) => showTip(event, nameTitle(d) +
       tipRow("Shift", `${d.shift_km > 0 ? "+" : ""}${d.shift_km} km ${d.shift_km >= 0 ? "north" : "south"}`) +
       tipRow("± 2 standard errors", `${(2 * d.shift_se_km).toFixed(1)} km`) +
       tipRow("Observations before / after", `${fmt(d.n_before)} / ${fmt(d.n_after)}`)))

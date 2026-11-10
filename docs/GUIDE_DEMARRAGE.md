@@ -73,6 +73,7 @@ par région, préparée par GBIF en quelques minutes, avec un DOI citable (noté
 ```bash
 python ingestion/gbif.py --regions north_evia     # commence par une seule région
 python ingestion/firms.py --regions north_evia
+python ingestion/gbif_names.py                    # noms anglais des espèces (API GBIF, sans compte)
 ```
 
 Les fichiers arrivent dans `data/raw/gbif/` et `data/raw/firms/`, un CSV par mois. Si le script

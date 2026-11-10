@@ -85,7 +85,7 @@ each month and the dashboard on the 2nd.
 
 ```bash
 pip install -r requirements.txt
-python ingestion/gbif.py && python ingestion/firms.py      # 1. download
+python ingestion/gbif.py && python ingestion/gbif_names.py && python ingestion/firms.py   # 1. download
 python databricks/upload_to_volume.py                       # 2. upload to Databricks
 cd dbt && dbt deps && dbt seed && dbt build                 # 3. transform and test
 python export/export_gold.py                               # 4. export results

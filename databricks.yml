@@ -83,8 +83,15 @@ resources:
             python_file: ingestion/gbif.py
             parameters: ["--out", "${var.landing_path}", "--refresh-months", "3"]
 
+        - task_key: ingest_gbif_names
+          depends_on: [{task_key: ingest_gbif}]
+          environment_key: ingest
+          spark_python_task:
+            python_file: ingestion/gbif_names.py
+            parameters: ["--out", "${var.landing_path}"]
+
         - task_key: dbt_build
-          depends_on: [{task_key: ingest_firms}, {task_key: ingest_gbif}]
+          depends_on: [{task_key: ingest_firms}, {task_key: ingest_gbif_names}]
           environment_key: dbt
           dbt_task:
             project_directory: dbt

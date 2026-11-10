@@ -27,6 +27,7 @@ select
     episode_id,
     species_key,
     species_name,
+    n.common_name,
     taxon_group,
     n_before,
     n_after,
@@ -39,5 +40,6 @@ select
         > 2 * sqrt(power(sd_lat_before, 2) / n_before + power(sd_lat_after, 2) / n_after)
                                                                        as is_notable
 from by_period
+left join {{ ref('stg_gbif__species_names') }} as n using (species_key)
 where n_before >= {{ var('min_obs_latitude_shift') }}
   and n_after  >= {{ var('min_obs_latitude_shift') }}

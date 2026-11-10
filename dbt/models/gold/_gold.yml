@@ -44,6 +44,8 @@ models:
       - dbt_utils.unique_combination_of_columns:
           arguments: {combination_of_columns: [episode_id, species_key]}
     columns:
+      - name: common_name
+        description: English common name (GBIF), null when there is none — the dashboard then shows species_name.
       - name: response
         data_tests:
           - accepted_values:
@@ -52,6 +54,9 @@ models:
 
   - name: fct_species_latitude_shift
     description: Mean latitude of each species' observations before vs after, with a standard error.
+    columns:
+      - name: common_name
+        description: English common name (GBIF), null when there is none.
     data_tests:
       - dbt_utils.unique_combination_of_columns:
           arguments: {combination_of_columns: [episode_id, species_key]}

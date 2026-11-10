@@ -50,6 +50,13 @@ SPECIES = [
         ("Helix lucorum", "Animalia", "Gastropoda"), ("Scolopendra cingulata", "Animalia", "Chilopoda"),
     ])
 ]
+# English common names, as ingestion/gbif_names.py writes them; the last species has none
+COMMON_NAMES = [
+    "Great tit", "European robin", "Eurasian magpie", "Common buzzard", "Red fox",
+    "Northern white-breasted hedgehog", "Hermann's tortoise", "Common toad", "Western honey bee",
+    "Old World swallowtail", "Aleppo pine", "Kermes oak", "Strawberry tree", "Cretan rockrose",
+    "Tree heath", "Conehead thyme", "Fly agaric", "Penny bun", "Turkish snail", "",
+]
 BEFORE_DAYS = (date(2019, 9, 1), date(2021, 7, 31))  # inside the 24-month "before" window
 AFTER_DAYS = (date(2021, 9, 1), date(2023, 7, 31))   # inside the 24-month "after" window
 
@@ -66,12 +73,15 @@ EXPECTED = {
     # every row of int_occurrences_labeled: the boxes + stale dataset + during fire + disturbed
     "n_observations": 400 + 200 + 400 + 400 + 100 + 20 + 50,
     "n_fire_detections": None,  # filled in below from the grid size
+    # species_key -> common_name in the gold tables (None: the dashboard shows the scientific name)
+    "common_names": {SPECIES[0][0]: COMMON_NAMES[0], SPECIES[-1][0]: None},
 }
 
 GBIF_COLUMNS = ["region_id", "gbif_id", "species_key", "species", "taxon_rank", "kingdom", "phylum",
                 "class_name", "order_name", "family", "decimal_latitude", "decimal_longitude",
                 "coordinate_uncertainty_m", "event_date", "basis_of_record", "dataset_key",
                 "country_code", "observer_id"]
+NAMES_COLUMNS = ["species_key", "scientific_name", "common_name", "checked_on"]
 FIRMS_COLUMNS = ["region_id", "source", "latitude", "longitude", "acq_date", "acq_time",
                  "satellite", "instrument", "confidence", "frp", "daynight"]
 
@@ -148,6 +158,11 @@ def detections() -> list[dict]:
     return rows
 
 
+def species_names() -> list[dict]:
+    return [{"species_key": key, "scientific_name": name, "common_name": common, "checked_on": "2026-01-01"}
+            for (key, name, _, _), common in zip(SPECIES, COMMON_NAMES)]
+
+
 def write(path: Path, columns: list[str], rows: list[dict]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="") as f:
@@ -158,9 +173,10 @@ def write(path: Path, columns: list[str], rows: list[dict]) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--out", required=True, type=Path, help="landing root folder to write gbif/ and firms/ into")
+    parser.add_argument("--out", required=True, type=Path, help="landing root folder to write gbif/, gbif_names/ and firms/ into")
     out = parser.parse_args().out
     write(out / "gbif" / f"{REGION_ID}_scenario.csv", GBIF_COLUMNS, occurrences())
+    write(out / "gbif_names" / "species_names.csv", NAMES_COLUMNS, species_names())
     write(out / "firms" / f"{REGION_ID}_scenario.csv", FIRMS_COLUMNS, detections())
     print(f"Scenario written to {out}")
 

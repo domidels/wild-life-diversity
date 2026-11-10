@@ -56,3 +56,11 @@ def test_species_lost_in_burned_zone(query):
     n_species_after = EXPECTED["boxes"][("burned", "after")][1]
     assert len(lost) == n_species_before - n_species_after
     assert {r["response"] for r in lost} == {"less_frequent"}
+
+
+def test_species_carry_their_english_name(query):
+    rows = query(f"select species_key, common_name from {{gold}}.fct_species_response "
+                 f"where episode_id = '{EPISODE_ID}'")
+    names = {r["species_key"]: r["common_name"] for r in rows}
+    for key, expected in EXPECTED["common_names"].items():
+        assert names[key] == expected, key

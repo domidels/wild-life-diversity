@@ -1,4 +1,4 @@
-"""Create the landing volume and upload data/raw/{gbif,firms} to it.
+"""Create the landing volume and upload data/raw/{gbif,gbif_names,firms} to it.
 
 Only needed when ingestion ran on a laptop. The Databricks job (databricks.yml) writes
 straight into the volume. The CI uploads the integration-test scenario the same way, into its
@@ -48,7 +48,7 @@ def already_uploaded(client: WorkspaceClient, folder: str) -> set[str]:
 
 def upload(local_root: Path, volume: str, force: bool, clean: bool) -> None:
     client = WorkspaceClient(host="https://" + os.environ["DATABRICKS_HOST"].removeprefix("https://"), token=os.environ["DATABRICKS_TOKEN"])
-    for source in ("gbif", "firms"):
+    for source in ("gbif", "gbif_names", "firms"):
         local = sorted((local_root / source).glob("*.csv"))
         remote = already_uploaded(client, f"{volume}/{source}")
         if clean:  # the volume ends up holding exactly the local files
@@ -66,7 +66,7 @@ def upload(local_root: Path, volume: str, force: bool, clean: bool) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="re-upload files already in the volume")
-    parser.add_argument("--source", type=Path, default=ROOT / "data" / "raw", help="local folder holding gbif/ and firms/")
+    parser.add_argument("--source", type=Path, default=ROOT / "data" / "raw", help="local folder holding gbif/, gbif_names/ and firms/")
     parser.add_argument("--volume", default=VOLUME, help="target volume, /Volumes/<catalog>/<schema>/<volume>")
     parser.add_argument("--clean", action="store_true", help="delete volume files that are not in --source")
     args = parser.parse_args()

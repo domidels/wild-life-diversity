@@ -39,6 +39,12 @@ models:
           Anonymous hash of GBIF recordedBy (person or account), null when not provided.
           Several people recorded together share one id.
 
+  - name: stg_gbif__species_names
+    description: English common name of each species (GBIF vernacularName), null when GBIF has none.
+    columns:
+      - name: species_key
+        data_tests: [unique, not_null]
+
   - name: stg_firms__detections
     description: Satellite fire detections (VIIRS / MODIS) with a confidence level comparable across instruments.
     columns:
