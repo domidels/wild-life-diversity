@@ -46,7 +46,7 @@ jobs:
           pip install "databricks-sql-connector>=3.0" "python-dotenv>=1.0"
           # The serverless warehouse can refuse to start for a while ("Cannot create the resource").
           for attempt in 1 2 3; do
-            python export/export_marts.py && exit 0
+            python export/export_gold.py && exit 0
             echo "::warning::Databricks export failed (attempt $attempt/3)"
             [ "$attempt" -lt 3 ] && sleep 120
           done

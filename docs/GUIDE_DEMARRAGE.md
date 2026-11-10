@@ -124,16 +124,16 @@ dbt docs generate --profiles-dir . && dbt docs serve --profiles-dir .
 
 1. [`seeds/regions.csv`](../dbt/seeds/regions.csv) et [`seeds/fire_episodes.csv`](../dbt/seeds/fire_episodes.csv) — les régions (cadres géographiques) et leurs feux. C'est la seule chose à modifier pour étudier un autre feu.
 2. [`models/bronze/`](../dbt/models/bronze) — `read_files()` lit les CSV du volume.
-3. [`models/staging/`](../dbt/models/staging) — typage, filtres qualité, index H3, fenêtres avant/après de chaque épisode.
-4. [`models/intermediate/`](../dbt/models/intermediate) — par épisode : historique de feu par cellule, zones, étiquetage des observations.
-5. [`models/marts/`](../dbt/models/marts) — une table par graphique du dashboard, une ligne par épisode.
+3. [`models/silver/staging/`](../dbt/models/silver/staging) — typage, filtres qualité, index H3, fenêtres avant/après de chaque épisode.
+4. [`models/silver/intermediate/`](../dbt/models/silver/intermediate) — par épisode : historique de feu par cellule, zones, étiquetage des observations.
+5. [`models/gold/`](../dbt/models/gold) — une table par graphique du dashboard, une ligne par épisode.
 6. [`dbt_project.yml`](../dbt/dbt_project.yml) — les paramètres (`vars`) : taille des hexagones, seuils, 24 mois « après ».
 
 ## 7. Exporter vers le site et publier
 
 ```bash
 cd ..
-python export/export_marts.py         # remplace web/data/*.json par les vraies données
+python export/export_gold.py         # remplace web/data/*.json par les vraies données
 python -m http.server -d web 8000     # vérifie : la date en bas de page est celle du jour
 ```
 

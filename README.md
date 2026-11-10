@@ -38,7 +38,9 @@ Everything runs in the cloud, once a month:
 
 1. **Download** — a monthly Databricks job fetches new GBIF observations and NASA fire detections.
 2. **Transform** — dbt cleans the data, places it on a hexagon grid, and computes the
-   before/after comparisons, in three layers (raw → clean → results), tested at each step.
+   before/after comparisons, in three medallion layers, tested at each step:
+   [`bronze`](dbt/models/bronze) (raw files as-is) → [`silver`](dbt/models/silver) (cleaned,
+   on the grid, burn zones) → [`gold`](dbt/models/gold) (one table per dashboard chart).
 3. **Publish** — GitHub Actions exports the results to JSON and publishes the dashboard
    (D3 + Leaflet) on GitHub Pages.
 
@@ -80,7 +82,7 @@ pip install -r requirements.txt
 python ingestion/gbif.py && python ingestion/firms.py      # 1. download
 python databricks/upload_to_volume.py                       # 2. upload to Databricks
 cd dbt && dbt deps && dbt seed && dbt build                 # 3. transform and test
-python export/export_marts.py                               # 4. export results
+python export/export_gold.py                               # 4. export results
 python -m http.server -d web 8000                           # 5. view the dashboard
 ```
 

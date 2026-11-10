@@ -4,7 +4,7 @@ The dashboard is a static site (GitHub Pages): it cannot query Databricks live â
 a public portfolio expose a warehouse token. So we snapshot the small gold tables to JSON.
 
 Usage:
-    python export/export_marts.py            # reads DATABRICKS_* from .env
+    python export/export_gold.py            # reads DATABRICKS_* from .env
 """
 
 from __future__ import annotations

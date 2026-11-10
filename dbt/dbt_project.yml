@@ -53,17 +53,21 @@ seeds:
         fire_end: date
         before_months: int
 
+# Medallion layers: one folder per layer, one schema per layer (wildfire_bronze / _silver / _gold).
 models:
   wildfire_biodiversity:
+    # Raw CSVs from the landing volume, as-is.
     bronze:
       +schema: bronze
       +materialized: table
-    staging:
+    # Cleaned and enriched data: typed sources (staging), then per-episode logic (intermediate).
+    silver:
       +schema: silver
-      +materialized: view
-    intermediate:
-      +schema: silver
-      +materialized: table
-    marts:
+      staging:
+        +materialized: view
+      intermediate:
+        +materialized: table
+    # Final tables, one per dashboard chart.
+    gold:
       +schema: gold
       +materialized: table
